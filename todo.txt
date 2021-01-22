@@ -1,4 +1,10 @@
 palette
+buttons!
+
 focus
 big picture
+legacies
+
+scenes
+
 fix project name centering
