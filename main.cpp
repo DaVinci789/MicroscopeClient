@@ -8,7 +8,7 @@
 #include <algorithm>
 #include "common.hpp"
 
-#define GRIDSIZE 32
+#define GRIDSIZE 16
 
 template<typename T>
 T clamp(T value, T lower, T upper) {
@@ -54,8 +54,22 @@ Vector2 operator+(Vector2 v1, Vector2 v2) {
     return result;
 }
 
+Vector2 operator/(Vector2 v1, Vector2 v2) {
+    Vector2 result = { v1.x / v2.x, v1.y / v2.y };
+    return result;
+}
+
+template<typename T>
+T center(T large, T small) {
+    return (large / small) / 2.0;
+}
+
 bool collide(Rectangle rect1, Rectangle rect2) {
     return CheckCollisionRecs(rect1, rect2);
+}
+
+void print(bool the_bool) {
+    std::cout << (the_bool ? "true" : "false") << std::endl;
 }
 
 void print(Vector2 vector) {
@@ -84,17 +98,67 @@ Vector2 GetWorldMousePosition(Camera2D camera) {
     return position;
 }
 
+Vector2 previous_mouse_position = {0};
+
+Vector2 get_mouse_delta(Camera2D camera) {
+    Vector2 vec = GetMousePosition() - previous_mouse_position;
+    // vec = Vector2Scale(vec, 1/camera.zoom);
+    return vec;
+}
+
 struct Project {
-    std::string name;
+    std::string big_picture;
 };
 
 Project init_project(std::string project_name) {
     Project project;
-    project.name = project_name;
+    project.big_picture = project_name;
     return project;
 }
 
-enum CardType {
+struct Palette {
+    bool open;
+    std::vector<std::string> yes;
+    std::vector<std::string> no;
+
+    Rectangle palette_open_rec;
+    bool palette_open_hover;
+    Rectangle palette_body_rec;
+};
+
+Palette init_palette() {
+    Palette palette;
+    palette.open = false;
+    palette.yes = std::vector<std::string>();
+    palette.no = std::vector<std::string>();
+    palette.yes.push_back("nocheckin");
+    palette.yes.push_back("nocheckin");
+    palette.yes.push_back("nocheckin");
+    palette.yes.push_back("nocheckin");
+    palette.no.push_back("nocheckin");
+    palette.no.push_back("nocheckin");
+    palette.no.push_back("nocheckin");
+    palette.palette_open_rec = {0};
+    palette.palette_open_hover = false;
+    palette.palette_body_rec = {0};
+    return palette;
+}
+
+void update_palette(Palette& palette) {
+    if (palette.open) {
+        palette.palette_open_rec = {(float) (GetScreenWidth() * 0.667 - 32.0), (float) (GetScreenHeight() / 2.0 - 16.0), 32, 32};
+    }
+    else {
+        palette.palette_open_rec = {(float) (GetScreenWidth() - 32.0), (float) (GetScreenHeight() / 2.0 - 16.0), 32, 32};
+    }
+    palette.palette_body_rec = {(float) (GetScreenWidth() * 0.667), 0, (float) (GetScreenWidth() - 16.0), (float) (GetScreenHeight() - 16.0)};
+}
+
+void toggle_palette(Palette& palette) {
+    palette.open = !palette.open;
+}
+
+enum Tone {
     LIGHT,
     DARK
 };
@@ -102,7 +166,7 @@ enum CardType {
 struct Card {
     std::string name;
     std::string content;
-    CardType type;
+    Tone tone;
     bool deleted;
     bool grabbed;
     bool selected;
@@ -129,7 +193,7 @@ Card init_card(std::string name, Rectangle body_rect) {
     Card card;
     card.name = name;
     card.content = "";
-    card.type = LIGHT;
+    card.tone = LIGHT;
     card.deleted  = false;
     card.grabbed  = false;
     card.selected = false;
@@ -168,6 +232,7 @@ Card* greatest_depth_and_furthest_along(std::vector<Card>& cards) {
 
 enum PlayerState {
     READONLY,
+    PALETTEWRITING,
     WRITING,
     HOVERING, // Just looking, but still able to move cards around and such
     GRABBING,
@@ -281,7 +346,8 @@ Vector2 lock_position_to_grid(Vector2 position) {
     };
 }
 
-void player_hover_update(Player& player, std::vector<Card>& cards) {
+// This is the main meat of the program.
+void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette) {
     auto mouse_position = GetMousePosition();
     auto position = GetScreenToWorld2D(mouse_position, player.camera);
     player.player_rect.x = position.x;
@@ -307,8 +373,9 @@ void player_hover_update(Player& player, std::vector<Card>& cards) {
         card.button_hover      = collide(player.player_rect, card.edit_button_rec);
         card.type_toggle_hover = collide(player.player_rect, card.type_toggle_rec);
     }
+    palette.palette_open_hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.palette_open_rec);
 
-    if (player.selected_card && IsMouseButtonPressed(0)) {
+    if (IsMouseButtonPressed(0) && player.selected_card) {
         auto deepest_card = greatest_depth_and_furthest_along(cards);
         player.selected_card->depth = deepest_card->depth + 1;
         // Card button clicked!
@@ -330,24 +397,42 @@ void player_hover_update(Player& player, std::vector<Card>& cards) {
             if (player.selected_card->color == WHITE) player.selected_card->color = BLACK;
             else player.selected_card->color = WHITE;
         }
+    } else if (IsMouseButtonPressed(0)) { // Player clicks, but is not on a card
+        if (palette.palette_open_hover) {
+            toggle_palette(palette);
+            return;
+        } else {
+            player.state = GRABBING;
+            player.hold_origin = GetMousePosition();
+            return;
+        }
     } else if (IsMouseButtonReleased(0) && player.selected_card) {
         auto position_to_lock_to = lock_position_to_grid((Vector2) {player.selected_card->body_rect.x, player.selected_card->body_rect.y});
-        // player.selected_card->body_rect.x = position_to_lock_to.x;
-        // player.selected_card->body_rect.y = position_to_lock_to.y;
         player.selected_card->lock_target = position_to_lock_to;
         player.selected_card->grabbed = false;
+        for (auto& card: cards) {
+            if (!card.selected) continue;
+            position_to_lock_to = lock_position_to_grid((Vector2) {card.body_rect.x, card.body_rect.y});
+            card.lock_target = position_to_lock_to;
+            card.selected = false;
+        }
+
         player.mouse_held = false;
         player.offset = {0, 0};
         player.selected_card = NULL;
-    } else if (IsMouseButtonPressed(0)) { // Player clicks on background
-        player.state = GRABBING;
-        player.hold_origin = GetMousePosition();
-        return;
-    }
+    } 
 
+    // Move grabbed and selected cards.
     if (player.mouse_held && player.selected_card) {
         player.selected_card->body_rect.x = position.x - player.offset.x;
         player.selected_card->body_rect.y = position.y - player.offset.y;
+        for (auto& card: cards) {
+            if (card.selected) {
+                auto mouse_delta = Vector2Scale(get_mouse_delta(player.camera), 1.0/player.camera.zoom);
+                card.lock_target.x += mouse_delta.x;
+                card.lock_target.y += mouse_delta.y;
+            }
+        }
     }
 
     // Key Processing
@@ -361,9 +446,9 @@ void player_hover_update(Player& player, std::vector<Card>& cards) {
     if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
         // Zoom In/Out
         if (IsKeyPressed(player.binds.move_up)) {
-            player.camera_zoom_target += 0.5f;
+            player.camera_zoom_target += 0.25f;
         } else if (IsKeyPressed(player.binds.move_down)) {
-            player.camera_zoom_target -= 0.5f;
+            player.camera_zoom_target -= 0.25f;
         }
         player.camera_zoom_target = clamp<float>(player.camera_zoom_target, 0.5, 1.5);
     } else {
@@ -379,14 +464,6 @@ void player_hover_update(Player& player, std::vector<Card>& cards) {
     if (IsKeyPressed(KEY_SPACE)) {
         spawn_card(player, cards);
     }
-}
-
-Vector2 previous_mouse_position = {0};
-
-Vector2 get_mouse_delta(Camera2D camera) {
-    Vector2 vec = GetMousePosition() - previous_mouse_position;
-    // vec = Vector2Scale(vec, 1/camera.zoom);
-    return vec;
 }
 
 void player_grabbing_update(Player& player, std::vector<Card>& cards) {
@@ -419,6 +496,10 @@ void player_grabbing_update(Player& player, std::vector<Card>& cards) {
     for (auto &card: cards) {
         card.selected = collide(card.body_rect, selected_world_rect);
     }
+}
+
+void player_write_palette_update(Player& player) {
+    return;
 }
 
 Texture generate_grid() {
@@ -507,6 +588,33 @@ void draw(Card &card, Camera2D camera, Player player) {
     card.edit_button_rec.y -= vertical_offset;
 }
 
+void draw(Palette palette) {
+    // draw Palette open button
+    DrawRectangleRec(palette.palette_open_rec, palette.palette_open_hover ? PURPLE : GRAY);
+    if (!palette.open) return;
+    // Draw Palette Body
+    DrawRectangleRec(palette.palette_body_rec, GRAY);
+
+    DrawText("Palette", palette.palette_body_rec.x, palette.palette_body_rec.y, 30, WHITE);
+    DrawText("Yes", palette.palette_body_rec.x, palette.palette_body_rec.y + MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+    int text_index = 2;
+    for (auto& text: palette.yes) {
+        DrawText(text.c_str(), palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+        text_index += 1;
+    }
+    // Draw Add button
+    DrawRectangle(palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30, BLACK);
+
+    DrawText("No", palette.palette_body_rec.x, palette.palette_body_rec.y + (palette.yes.size() + 3) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+    text_index += 2;
+    for (auto& text: palette.no) {
+        DrawText(text.c_str(), palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+        text_index += 1;
+    }
+    DrawRectangle(palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30, BLACK);
+
+}
+
 int main(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
@@ -520,6 +628,7 @@ int main(void) {
     Defer {UnloadFont(application_font);};
 
     Project current_project = init_project("New Game");
+    Palette palette = init_palette();
 
     Player player = init_player();
     auto cards = std::vector<Card>();
@@ -527,17 +636,21 @@ int main(void) {
     Texture grid_texture = generate_grid();
 
     while (!WindowShouldClose()) {
-        // print(get_mouse_delta(player.camera));
 
         // Update Game
+        /// How I write update function sigs:
+        /// first param is the player struct followed by everything the player can interact with while in that state.
         switch (player.state) {
         case READONLY:
+            break;
+        case PALETTEWRITING:
+            player_write_palette_update(player);
             break;
         case WRITING:
             player_write_update(player);
             break;
         case HOVERING:
-            player_hover_update(player, cards);
+            player_hover_update(player, cards, palette);
             break;
         case GRABBING:
             player_grabbing_update(player, cards);
@@ -552,11 +665,17 @@ int main(void) {
         // Tween camera
         player.camera.target = lerp<Vector2>(player.camera.target, player.camera_target, 0.2);
         player.camera.zoom = lerp<float>(player.camera.zoom, player.camera_zoom_target, 0.2);
+        // Refactor: I don't like how the cards position updates here.
         // Tween cards
         for (auto &card: cards) {
             if (card.grabbed) continue;
-            card.body_rect.x = lerp<float>(card.body_rect.x, card.lock_target.x, 0.2);
-            card.body_rect.y = lerp<float>(card.body_rect.y, card.lock_target.y, 0.2);
+            if (!card.selected) {
+                card.body_rect.x = lerp<float>(card.body_rect.x, card.lock_target.x, 0.2);
+                card.body_rect.y = lerp<float>(card.body_rect.y, card.lock_target.y, 0.2);
+            } else {
+                card.body_rect.x = card.lock_target.x;
+                card.body_rect.y = card.lock_target.y;
+            }
         }
 
         // Cull deleted cards
@@ -569,6 +688,7 @@ int main(void) {
             card.edit_button_rec = {card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30};
             card.type_toggle_rec = {card.body_rect.x, card.body_rect.y + card.body_rect.height - 30, 50, 30};
         }
+        update_palette(palette);
         BeginDrawing();
         BeginMode2D(player.camera);
         ClearBackground(RAYWHITE);
@@ -579,8 +699,8 @@ int main(void) {
         // Draw Description Lines and Project Name
         DrawLineEx((Vector2) {0, -100000}, (Vector2) {0, 100000}, 3.0, WHITE);
         DrawLineEx((Vector2) {-100000, 0}, (Vector2) {100000, 0}, 3.0, WHITE);
-        DrawRectangle(0, 0, MeasureTextEx(GetFontDefault(), current_project.name.c_str(), 30, 1.0).x + 36, MeasureTextEx(GetFontDefault(), current_project.name.c_str(), 30, 1.0).y + 3, WHITE);
-        DrawText(current_project.name.c_str(), 0, 0, 30, BLACK);
+        DrawRectangle(1, 1, MeasureTextEx(GetFontDefault(), current_project.big_picture.c_str(), 30, 1.0).x + 32, MeasureTextEx(GetFontDefault(), current_project.big_picture.c_str(), 30, 1.0).y, WHITE);
+        DrawText(current_project.big_picture.c_str(), 8, 0, 30, BLACK);
 
         Defer {
             for (auto &card: cards) {
@@ -619,6 +739,8 @@ int main(void) {
             }, 5.0, BLUE);
 
         }
+
+        draw(palette);
 
         // Draw player cursor over everything.
         player.player_rect.x = GetMousePosition().x;

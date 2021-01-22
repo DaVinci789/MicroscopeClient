@@ -1,2 +1,4 @@
-delete cards
-select cards
+palette
+focus
+big picture
+fix project name centering
