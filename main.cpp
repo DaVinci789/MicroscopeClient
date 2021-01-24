@@ -271,13 +271,16 @@ struct Card {
     Color color;
 
     Rectangle header_rec;
-    Rectangle close_button_rec;
-    Rectangle edit_button_rec;
-    Rectangle type_toggle_rec;
-    // bool header_hover;
-    bool close_hover;
-    bool button_hover;
-    bool type_toggle_hover;
+
+    // Rectangle close_button_rec;
+    // Rectangle edit_button_rec;
+    // Rectangle type_toggle_rec;
+    // bool close_hover;
+    // bool button_hover;
+    // bool type_toggle_hover;
+    Button close_button;
+    Button edit_button;
+    Button tone_button;
 
     int depth;
     bool drawn;
@@ -298,15 +301,12 @@ Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD) {
     card.body_rect = body_rect;
     card.lock_target = {body_rect.x, body_rect.y};
     card.color = WHITE;
-    card.header_rec       = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
-    card.close_button_rec = {card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height};
-    card.edit_button_rec  = {card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30};
-    card.type_toggle_rec  = {card.body_rect.x, card.body_rect.height - 30, 50, 30};
+    card.header_rec      = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
+    card.close_button    = init_button({card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height});
+    card.edit_button = init_button({card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30});
+    card.tone_button = init_button({card.body_rect.x, card.body_rect.height - 30, 50, 30});
 
     // card.header_hover = false;
-    card.close_hover  = false;
-    card.button_hover = false;
-    card.type_toggle_hover = false;
     card.depth = 0;
     card.drawn = false;
     return card;
@@ -362,13 +362,13 @@ void update_cards(std::vector<Card>& cards) {
         card.header_rec = {card.body_rect.x,
             card.body_rect.y - card.header_rec.height,
             card.body_rect.width - 30, card.header_rec.height};
-        card.close_button_rec = {card.body_rect.x + card.body_rect.width - 30,
+        card.close_button.rect = {card.body_rect.x + card.body_rect.width - 30,
             card.body_rect.y - card.header_rec.height, 30,
             card.header_rec.height};
-        card.edit_button_rec = {card.body_rect.x + card.body_rect.width - 50,
+        card.edit_button.rect = {card.body_rect.x + card.body_rect.width - 50,
             card.body_rect.y + card.body_rect.height - 30, 50,
             30};
-        card.type_toggle_rec = {card.body_rect.x,
+        card.tone_button.rect = {card.body_rect.x,
             card.body_rect.y + card.body_rect.height - 30, 50,
             30};
     }
@@ -556,7 +556,7 @@ void player_resize_chosen_card(Player& player) {
     Card *card = player.selected_card;
     if (!card) return;
 
-    auto mouse_over_button = CheckCollisionPointRec(position, card->edit_button_rec);
+    auto mouse_over_button = CheckCollisionPointRec(position, card->edit_button.rect);
     if (IsMouseButtonPressed(0) && mouse_over_button) {
         player.resizing_card = true;
     } else if (IsMouseButtonReleased(0)) {
@@ -593,10 +593,9 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.selected_card = &card;
         }
         // FIXME: The button logic shouldn't be in this function!
-        // card.header_hover      = collide(player.player_rect, card.header_rec);
-        card.close_hover       = collide(player.player_rect, card.close_button_rec);
-        card.button_hover      = collide(player.player_rect, card.edit_button_rec);
-        card.type_toggle_hover = collide(player.player_rect, card.type_toggle_rec);
+        update_button_hover(card.close_button, position);
+        update_button_hover(card.edit_button, position);
+        update_button_hover(card.tone_button, position);
     }
     palette.open_button.hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.open_button.rect);
 
@@ -604,23 +603,16 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         auto deepest_card = greatest_depth_and_furthest_along(cards);
         player.selected_card->depth = deepest_card->depth + 1;
         // Card button clicked!
-        // if (player.selected_card->header_hover) {
-        //     player.state = WRITING;
-        //     player.editing = NAME;
-        //     player.selected_card->last_name = player.selected_card->name;
-        //     player.selected_card->name = "";
-        //     player.mouse_held = false;
-        //     player.offset = {0 ,0}; }
-        if (player.selected_card->close_hover) {
+        if (player.selected_card->close_button.hover) {
             player.selected_card->deleted = true;
             player.mouse_held = false;
             player.offset = {0 ,0};
-        } else if (player.selected_card->button_hover) {
+        } else if (player.selected_card->edit_button.hover) {
             player.state = WRITING;
             player.editing = BODY;
             player.mouse_held = false;
             player.offset = {0 ,0};
-        } else if (player.selected_card->type_toggle_hover) {
+        } else if (player.selected_card->tone_button.hover) {
             if (player.selected_card->color == WHITE) player.selected_card->color = BLACK;
             else player.selected_card->color = WHITE;
         }
@@ -769,7 +761,7 @@ void draw(Card &card, Camera2D camera, Player player) {
     // Draw Header
     DrawRectangleRec(card.header_rec, GRAY);
     /// Draw close button
-    DrawRectangleRec(card.close_button_rec, RED);
+    DrawRectangleRec(card.close_button.rect, RED);
 
     // Draw Body
     DrawRectangleRec(card.body_rect, card.color);
@@ -797,26 +789,26 @@ void draw(Card &card, Camera2D camera, Player player) {
     card.body_rect.height += 5;
 
     // Draw Toggle Button
-    if (card.type_toggle_hover) {
-        DrawRectangleRec(card.type_toggle_rec, PURPLE);
+    if (card.tone_button.hover) {
+        DrawRectangleRec(card.tone_button.rect, PURPLE);
     } else {
-        DrawRectangleRec(card.type_toggle_rec, GRAY);
+        DrawRectangleRec(card.tone_button.rect, GRAY);
     }
 
     // Draw Edit Button
-    if (card.button_hover) {
-        DrawRectangleRec(card.edit_button_rec, PURPLE);
+    if (card.edit_button.hover) {
+        DrawRectangleRec(card.edit_button.rect, PURPLE);
     } else {
-        DrawRectangleRec(card.edit_button_rec, GRAY);
+        DrawRectangleRec(card.edit_button.rect, GRAY);
     }
 
-    float vertical_offset = (card.edit_button_rec.height - MeasureTextEx(application_font, "Edit", 24.0, 1.0).y) / 2.0;
-    float horizontal_offset = (card.edit_button_rec.width - MeasureTextEx(application_font, "Edit", 24.0, 1.0).x) / 2.0;
-    card.edit_button_rec.x += vertical_offset - 3;
-    card.edit_button_rec.y += vertical_offset;
-    DrawTextRec(application_font, "Edit", card.edit_button_rec, 24.0, 1.0, false, WHITE);
-    card.edit_button_rec.x -= vertical_offset - 3;
-    card.edit_button_rec.y -= vertical_offset;
+    float vertical_offset = (card.edit_button.rect.height - MeasureTextEx(application_font, "Edit", 24.0, 1.0).y) / 2.0;
+    float horizontal_offset = (card.edit_button.rect.width - MeasureTextEx(application_font, "Edit", 24.0, 1.0).x) / 2.0;
+    card.edit_button.rect.x += vertical_offset - 3;
+    card.edit_button.rect.y += vertical_offset;
+    DrawTextRec(application_font, "Edit", card.edit_button.rect, 24.0, 1.0, false, WHITE);
+    card.edit_button.rect.x -= vertical_offset - 3;
+    card.edit_button.rect.y -= vertical_offset;
 }
 
 void draw(Palette palette) {
