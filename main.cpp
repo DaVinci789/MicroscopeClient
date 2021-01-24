@@ -102,7 +102,7 @@ void print(Rectangle rect) {
     std::cout << "(" << rect.x << " " << rect.y << " " << rect.width << " " << rect.height << ")" << std::endl;
 }
 
-Vector2 GetWorldMousePosition(Camera2D camera) {
+Vector2 get_world_mouse_position(Camera2D camera) {
     auto position = camera.target;
     auto mouse_position = GetMousePosition();
     mouse_position.x -= (float) GetScreenWidth() / 2.0;
@@ -123,20 +123,68 @@ Vector2 get_mouse_delta() {
     return vec;
 }
 
+Vector2 lock_position_to_grid(Vector2 position) {
+    return (Vector2) {
+        (float) round(position.x / (float) GRIDSIZE) * (float) GRIDSIZE,
+        (float) round(position.y / (float) GRIDSIZE) * (float) GRIDSIZE
+    };
+}
+
+Font application_font;
+
+struct Button {
+    Rectangle rect;
+    bool hover;
+    std::string text;
+    Texture texture;
+};
+
+Button init_button(Rectangle button_rect, std::string button_text = "", Texture texture = {0}) {
+    Button button;
+    button.rect = button_rect;
+    button.hover = false;
+    button.text = button_text;
+    button.texture = texture;
+    return button;
+}
+
+void update_button_hover(Button& button, Vector2 position) {
+    button.hover = CheckCollisionPointRec(position, button.rect);
+}
+
+void draw(Button &button, Color depressed = PURPLE, Color pressed = GRAY) {
+    DrawRectangleRec(button.rect, button.hover ? depressed : pressed);
+}
+
 struct Project {
     std::string big_picture;
-    std::string focus;
-    std::string last_focus;
-    Rectangle focus_rect;
-    bool focus_hover;
+    std::string last_focus_text;
+    Button focus;
 };
+
+void update_project(Project& project) {
+    // Update focus
+    auto focus_text = to_c_str(project.focus.text);
+    auto focus_width = MeasureTextEx(application_font, focus_text.data(), 30, 1.0).x;
+    project.focus.rect = {(float) (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0)) - 16, 0, focus_width + 32, 30};
+}
 
 Project init_project(std::string project_name) {
     Project project;
     project.big_picture = project_name;
-    project.focus = "No Focus Set";
-    project.last_focus = "No Focus Set";
+
+    update_project(project); // sets focus_rect
+    project.focus.text = "No Focus Set";
+
+    project.last_focus_text = "No Focus Set";
     return project;
+}
+
+void draw(Project& project) {
+    auto focus_text = to_c_str(project.focus.text);
+    auto focus_width = MeasureTextEx(application_font, focus_text.data(), 30, 1.0).x;
+    draw(project.focus);
+    DrawTextEx(application_font, focus_text.data(), {(float (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0))), 0}, 30, 1.0, WHITE);
 }
 
 struct Palette {
@@ -144,15 +192,28 @@ struct Palette {
     std::vector<std::string> yes;
     std::vector<std::string> no;
 
-    Rectangle palette_open_rec;
-    bool palette_open_hover;
     Rectangle palette_body_rec;
 
-    Rectangle yes_add_button_rec;
-    bool yes_add_button_hover;
-    Rectangle no_add_button_rec;
-    bool no_add_button_hover;
+    Button open_button;
+    Button yes_button;
+    Button no_button;
 };
+
+void update_palette(Palette& palette) {
+    if (!palette.open) {
+        palette.open_button.rect = {(float) (GetScreenWidth() - 32.0), (float) (GetScreenHeight() / 2.0 - 16.0), 32, 32};
+        return;
+    }
+    palette.open_button.rect = {(float) (GetScreenWidth() * 0.667 - 32.0), (float) (GetScreenHeight() / 2.0 - 16.0), 32, 32};
+    palette.palette_body_rec = {(float) (GetScreenWidth() * 0.667), 0, (float) (GetScreenWidth() - 16.0), (float) (GetScreenHeight() - 16.0)};
+
+    palette.yes_button.rect = {palette.palette_body_rec.x + 8, palette.palette_body_rec.y + (palette.yes.size() + 2) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
+    palette.no_button.rect  = {palette.palette_body_rec.x + 8, palette.palette_body_rec.y + (palette.yes.size() + palette.no.size() + 4) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
+
+    auto mouse_position = GetMousePosition();
+    update_button_hover(palette.yes_button, mouse_position);
+    update_button_hover(palette.no_button, mouse_position);
+}
 
 Palette init_palette() {
     Palette palette;
@@ -170,26 +231,12 @@ Palette init_palette() {
     palette.no.push_back("nocheckin");
     palette.no.push_back("nocheckin");
     palette.no.push_back("nocheckin");
-    palette.palette_open_rec = {0};
-    palette.palette_open_hover = false;
+
+    palette.open_button.hover = false;
     palette.palette_body_rec = {0};
+    // Run a single update step to initialize button rects
+    update_palette(palette);
     return palette;
-}
-
-void update_palette(Palette& palette) {
-    if (!palette.open) {
-        palette.palette_open_rec = {(float) (GetScreenWidth() - 32.0), (float) (GetScreenHeight() / 2.0 - 16.0), 32, 32};
-        return;
-    }
-    palette.palette_open_rec = {(float) (GetScreenWidth() * 0.667 - 32.0), (float) (GetScreenHeight() / 2.0 - 16.0), 32, 32};
-    palette.palette_body_rec = {(float) (GetScreenWidth() * 0.667), 0, (float) (GetScreenWidth() - 16.0), (float) (GetScreenHeight() - 16.0)};
-
-    palette.yes_add_button_rec = {palette.palette_body_rec.x + 8, palette.palette_body_rec.y + (palette.yes.size() + 2) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
-    palette.no_add_button_rec  = {palette.palette_body_rec.x + 8, palette.palette_body_rec.y + (palette.yes.size() + palette.no.size() + 4) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
-
-    auto mouse_position = GetMousePosition();
-    palette.yes_add_button_hover = CheckCollisionPointRec(mouse_position, palette.yes_add_button_rec);
-    palette.no_add_button_hover = CheckCollisionPointRec(mouse_position, palette.no_add_button_rec);
 }
 
 void toggle_palette(Palette& palette) {
@@ -227,7 +274,7 @@ struct Card {
     Rectangle close_button_rec;
     Rectangle edit_button_rec;
     Rectangle type_toggle_rec;
-    bool header_hover;
+    // bool header_hover;
     bool close_hover;
     bool button_hover;
     bool type_toggle_hover;
@@ -256,7 +303,7 @@ Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD) {
     card.edit_button_rec  = {card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30};
     card.type_toggle_rec  = {card.body_rect.x, card.body_rect.height - 30, 50, 30};
 
-    card.header_hover = false;
+    // card.header_hover = false;
     card.close_hover  = false;
     card.button_hover = false;
     card.type_toggle_hover = false;
@@ -280,6 +327,52 @@ Card* greatest_depth_and_furthest_along(std::vector<Card>& cards) {
     return current_card;
 }
 
+void update_cards(std::vector<Card>& cards) {
+    cards.erase(std::remove_if(cards.begin(), cards.end(), [] (auto &card) {return card.deleted;}), cards.end());
+    // Tween cards
+    for (auto &card : cards) {
+        if (card.grabbed)
+            continue;
+        if (!card.selected) {
+            card.body_rect.x =
+                lerp<float>(card.body_rect.x, card.lock_target.x, 0.2);
+            card.body_rect.y =
+                lerp<float>(card.body_rect.y, card.lock_target.y, 0.2);
+            auto closeness = (Vector2){card.body_rect.x, card.body_rect.y} -
+                             card.lock_target;
+            if (!(closeness.x < 0.02 && closeness.y < 0.02))
+              continue; // Basically make sure we finish moving before we resize
+                        // the card.
+            Vector2 corner_coords = {card.body_rect.x + card.body_rect.width,
+                                     card.body_rect.y + card.body_rect.height};
+            card.body_rect.width = lerp<float>(
+                card.body_rect.width,
+                lock_position_to_grid(corner_coords).x - card.body_rect.x, 0.2);
+            card.body_rect.height = lerp<float>(
+                card.body_rect.height,
+                lock_position_to_grid(corner_coords).y - card.body_rect.y, 0.2);
+        } else {
+          card.body_rect.x = card.lock_target.x;
+          card.body_rect.y = card.lock_target.y;
+        }
+    }
+
+    /// Move subparts of cards
+    for (auto &card : cards) {
+        card.header_rec = {card.body_rect.x,
+            card.body_rect.y - card.header_rec.height,
+            card.body_rect.width - 30, card.header_rec.height};
+        card.close_button_rec = {card.body_rect.x + card.body_rect.width - 30,
+            card.body_rect.y - card.header_rec.height, 30,
+            card.header_rec.height};
+        card.edit_button_rec = {card.body_rect.x + card.body_rect.width - 50,
+            card.body_rect.y + card.body_rect.height - 30, 50,
+            30};
+        card.type_toggle_rec = {card.body_rect.x,
+            card.body_rect.y + card.body_rect.height - 30, 50,
+            30};
+    }
+}
 
 enum PlayerState {
     HOVERING, // Just looking, but still able to move cards around and such
@@ -324,6 +417,7 @@ struct Player {
 
     Card *selected_card;
     Vector2 offset;
+    bool resizing_card;
 };
 
 Player init_player() {
@@ -337,7 +431,7 @@ Player init_player() {
     player.camera = {0};
     player.camera_target = {0, 0};
     player.camera.target = player.camera_target;
-    player.zoom_level = 0;
+    player.zoom_level = 2;
     player.camera_zoom_target = 1.0f;
     player.camera.offset = (Vector2){ 800/2, 600/2 };
     player.camera.rotation = 0.0f;
@@ -357,13 +451,14 @@ Player init_player() {
 
     player.selected_card = NULL;
     player.offset = {0, 0};
+    player.resizing_card = false;
     return player;
 }
 
 void spawn_card(Player player, std::vector<Card>& cards, CardType type) {
     auto mouse_position = GetMousePosition();
     auto position = GetScreenToWorld2D(mouse_position, player.camera);
-    Rectangle to_draw = {position.x, position.y, 300, 200};
+    Rectangle to_draw = {position.x, position.y, GRIDSIZE * 17, GRIDSIZE * 13};
     Card the_card = init_card("New Card", to_draw, type);
     auto next_card = greatest_depth_and_furthest_along(cards);
     if (next_card) the_card.depth = next_card->depth + 1;
@@ -371,12 +466,65 @@ void spawn_card(Player player, std::vector<Card>& cards, CardType type) {
     cards.push_back(the_card);
 }
 
+void player_update_camera(Player &player, bool allow_key_scroll = true) {
+    #define ZOOM_SIZE 5
+    float zoom_levels[ZOOM_SIZE] = {0.5, 0.75, 1, 1.5, 2};
+
+    /// Move Left/Right
+    if (allow_key_scroll) {
+        if (IsKeyDown(player.binds.move_right)) {
+            player.camera_target.x += player.camera_move_speed * (1.0 / player.camera.zoom);
+        } else if (IsKeyDown(player.binds.move_left)) {
+            player.camera_target.x -= player.camera_move_speed * (1.0 / player.camera.zoom);
+        }
+
+        if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) { // Zooming
+            // Zoom In/Out
+            if (IsKeyPressed(player.binds.move_up)) {
+                player.zoom_level += 1;
+            } else if (IsKeyPressed(player.binds.move_down)) {
+                player.zoom_level -= 1;
+            }
+        } else {
+            // Move Up/Down
+            if (IsKeyDown(player.binds.move_up)) {
+                player.camera_target.y -= player.camera_move_speed;
+            } else if (IsKeyDown(player.binds.move_down)) {
+                player.camera_target.y += player.camera_move_speed;
+            }
+        }
+    }
+
+    // Mouse wheel stuff
+    auto wheel_move = GetMouseWheelMove();
+    if (wheel_move != 0.0) {
+        if (wheel_move > 0.0) {
+            player.zoom_level += 1;
+        } else {
+            player.zoom_level -= 1;
+        }
+    }
+
+    player.zoom_level = clamp<int>(player.zoom_level, 0, ZOOM_SIZE - 1);
+    player.camera_zoom_target = zoom_levels[player.zoom_level];
+
+    // Middle mouse button press movement
+    if (IsMouseButtonDown(MOUSE_MIDDLE_BUTTON)) {
+        auto mouse_move = get_mouse_delta() * (1.0 / player.camera.zoom);
+        player.camera_target = player.camera_target - mouse_move;
+    }
+
+    #undef ZOOM_SIZE
+}
+
 void player_write_update(Player& player) {
+    player_update_camera(player, false);
     if (IsKeyPressed(KEY_ESCAPE)) {
         if (player.editing == NAME) {
             if (player.selected_card->name.empty()) player.selected_card->name = player.selected_card->last_name;
         }
         player.state = HOVERING;
+        player.selected_card->grabbed = false;
         player.selected_card = NULL;
         return;
     }
@@ -402,11 +550,25 @@ void player_write_update(Player& player) {
     }
 }
 
-Vector2 lock_position_to_grid(Vector2 position) {
-    return (Vector2) {
-        (float) round(position.x / (float) GRIDSIZE) * (float) GRIDSIZE,
-        (float) round(position.y / (float) GRIDSIZE) * (float) GRIDSIZE
-    };
+void player_resize_chosen_card(Player& player) {
+    auto mouse_position = GetMousePosition();
+    auto position = GetScreenToWorld2D(mouse_position, player.camera);
+    Card *card = player.selected_card;
+    if (!card) return;
+
+    auto mouse_over_button = CheckCollisionPointRec(position, card->edit_button_rec);
+    if (IsMouseButtonPressed(0) && mouse_over_button) {
+        player.resizing_card = true;
+    } else if (IsMouseButtonReleased(0)) {
+        player.resizing_card = false;
+    }
+
+    if (!player.resizing_card) return;
+    auto mouse_delta = get_mouse_delta() * (1.0 / player.camera.zoom);
+    card->body_rect.width += mouse_delta.x;
+    card->body_rect.height += mouse_delta.y;
+    if (card->body_rect.width < 64) card->body_rect.width = 64;
+    if (card->body_rect.height < 64) card->body_rect.height = 64;
 }
 
 // This is the main meat of the program.
@@ -431,25 +593,25 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.selected_card = &card;
         }
         // FIXME: The button logic shouldn't be in this function!
-        card.header_hover      = collide(player.player_rect, card.header_rec);
+        // card.header_hover      = collide(player.player_rect, card.header_rec);
         card.close_hover       = collide(player.player_rect, card.close_button_rec);
         card.button_hover      = collide(player.player_rect, card.edit_button_rec);
         card.type_toggle_hover = collide(player.player_rect, card.type_toggle_rec);
     }
-    palette.palette_open_hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.palette_open_rec);
+    palette.open_button.hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.open_button.rect);
 
     if (IsMouseButtonPressed(0) && player.selected_card) {
         auto deepest_card = greatest_depth_and_furthest_along(cards);
         player.selected_card->depth = deepest_card->depth + 1;
         // Card button clicked!
-        if (player.selected_card->header_hover) {
-            player.state = WRITING;
-            player.editing = NAME;
-            player.selected_card->last_name = player.selected_card->name;
-            player.selected_card->name = "";
-            player.mouse_held = false;
-            player.offset = {0 ,0};
-        } else if (player.selected_card->close_hover) {
+        // if (player.selected_card->header_hover) {
+        //     player.state = WRITING;
+        //     player.editing = NAME;
+        //     player.selected_card->last_name = player.selected_card->name;
+        //     player.selected_card->name = "";
+        //     player.mouse_held = false;
+        //     player.offset = {0 ,0}; }
+        if (player.selected_card->close_hover) {
             player.selected_card->deleted = true;
             player.mouse_held = false;
             player.offset = {0 ,0};
@@ -463,13 +625,13 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             else player.selected_card->color = WHITE;
         }
     } else if (IsMouseButtonPressed(0)) { // Player clicks, but is not on a card
-        if (palette.palette_open_hover) {
+        if (palette.open_button.hover) {
             toggle_palette(palette);
             return;
-        } else if (project.focus_hover) { // Focus clicked
+        } else if (project.focus.hover) { // Focus clicked
             player.state = FOCUSWRITING;
-            project.last_focus = project.focus;
-            project.focus = "";
+            project.last_focus_text = project.focus.text;
+            project.focus.text = "";
             return;
         } else {
             player.state = GRABBING; // Background drag
@@ -505,39 +667,8 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         }
     }
 
-    // Middle mouse button press movement
-    if (IsMouseButtonDown(MOUSE_MIDDLE_BUTTON)) {
-        auto mouse_move = get_mouse_delta() * (1.0 / player.camera.zoom);
-        player.camera_target = player.camera_target - mouse_move;
-    }
-
     // Key Processing
-    /// Move Left/Right
-    if (IsKeyDown(player.binds.move_right)) {
-        player.camera_target.x += player.camera_move_speed * (1.0 / player.camera.zoom);
-    } else if (IsKeyDown(player.binds.move_left)) {
-        player.camera_target.x -= player.camera_move_speed * (1.0 / player.camera.zoom);
-    }
-
-    if (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT) || GetMouseWheelMove() != 0.0) { // Zooming
-        #define ZOOM_SIZE 5
-        float zoom_levels[ZOOM_SIZE] = {0.5, 0.75, 1, 1.5, 2};
-        // Zoom In/Out
-        if (IsKeyPressed(player.binds.move_up) || GetMouseWheelMove() > 0) {
-            player.zoom_level += 1;
-        } else if (IsKeyPressed(player.binds.move_down) || GetMouseWheelMove() < 0) {
-            player.zoom_level -= 1;
-        }
-        player.zoom_level = clamp<int>(player.zoom_level, 0, ZOOM_SIZE - 1);
-        player.camera_zoom_target = zoom_levels[player.zoom_level];
-    } else {
-        // Move Up/Down
-        if (IsKeyDown(player.binds.move_up)) {
-            player.camera_target.y -= player.camera_move_speed;
-        } else if (IsKeyDown(player.binds.move_down)) {
-            player.camera_target.y += player.camera_move_speed;
-        }
-    }
+    player_update_camera(player);
 
     /// Spawn card
     if (IsKeyPressed(KEY_ONE)) {
@@ -600,16 +731,16 @@ void player_write_palette_update(Player& player) {
 
 void player_write_focus_update(Player& player, Project& project) {
     if (IsKeyPressed(KEY_ESCAPE)) {
-        if (project.focus.empty()) project.focus = project.last_focus;
+        if (project.focus.text.empty()) project.focus.text = project.last_focus_text;
         player.state = HOVERING;
         return;
     }
     if (IsKeyPressed(KEY_BACKSPACE)) {
-        if (project.focus.size() > 0) project.focus.pop_back();
+        if (project.focus.text.size() > 0) project.focus.text.pop_back();
         return;
     }
     auto char_pressed = GetCharPressed();
-    if (char_pressed != 0) project.focus += (char) char_pressed;
+    if (char_pressed != 0) project.focus.text += (char) char_pressed;
     return;
 }
 
@@ -630,25 +761,13 @@ Texture generate_grid() {
     return LoadTextureFromImage(image);
 }
 
-Font application_font;
 
 void draw(Card &card, Camera2D camera, Player player) {
     Defer {card.drawn = true;};
 
     auto position = GetScreenToWorld2D(GetMousePosition(), camera);
     // Draw Header
-    if (card.header_hover) {
-        DrawRectangleRec(card.header_rec, PURPLE);
-    } else {
-        DrawRectangleRec(card.header_rec, GRAY);
-    }
-    // Draw card title
-    auto card_title = std::vector<char>();
-    for (auto &c: card.name) {
-        card_title.push_back((char) c);
-    }
-    card_title.push_back((char) '\0');
-    DrawTextEx(application_font, card_title.data(), {card.body_rect.x + 4, card.body_rect.y - card.header_rec.height - 3}, 24, 1.0, WHITE);
+    DrawRectangleRec(card.header_rec, GRAY);
     /// Draw close button
     DrawRectangleRec(card.close_button_rec, RED);
 
@@ -702,7 +821,7 @@ void draw(Card &card, Camera2D camera, Player player) {
 
 void draw(Palette palette) {
     // draw Palette open button
-    DrawRectangleRec(palette.palette_open_rec, palette.palette_open_hover ? PURPLE : GRAY);
+    DrawRectangleRec(palette.open_button.rect, palette.open_button.hover ? PURPLE : GRAY);
     if (!palette.open) return;
     // Draw Palette Body
     DrawRectangleRec(palette.palette_body_rec, GRAY);
@@ -725,7 +844,7 @@ void draw(Palette palette) {
         text_index += 1;
     }
     // Draw Add button
-    DrawRectangleRec(palette.yes_add_button_rec, palette.yes_add_button_hover ? PURPLE : GREEN);
+    draw(palette.yes_button, PURPLE, GREEN);
 
     DrawText("No", palette.palette_body_rec.x, palette.palette_body_rec.y + (palette.yes.size() + 3) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
     text_index += 2;
@@ -737,7 +856,7 @@ void draw(Palette palette) {
         DrawRectangleRec(button_rect, CheckCollisionPointRec(mouse_position, button_rect) ? PURPLE : RED);
         text_index += 1;
     }
-    DrawRectangleRec(palette.no_add_button_rec, palette.no_add_button_hover ? PURPLE : GREEN);
+    draw(palette.no_button, PURPLE, GREEN);
 
 }
 
@@ -781,6 +900,7 @@ int main(void) {
             break;
         case WRITING:
             player_write_update(player);
+            player_resize_chosen_card(player);
             break;
         case FOCUSWRITING:
             player_write_focus_update(player, current_project);
@@ -791,7 +911,7 @@ int main(void) {
         case HOVERING:
             player_hover_update(player, cards, palette, current_project);
             // HACK: This is here because if we enter the focus writing state, we want to keep it "purple" to signify that it's been selected.
-            current_project.focus_hover = CheckCollisionPointRec(GetMousePosition(), current_project.focus_rect);
+            update_button_hover(current_project.focus, GetMousePosition());
             break;
         case GRABBING:
             player_grabbing_update(player, cards);
@@ -806,35 +926,10 @@ int main(void) {
         // Tween camera
         player.camera.target = lerp<Vector2>(floor(player.camera.target), floor(player.camera_target), 0.2);
         player.camera.zoom = lerp<float>(player.camera.zoom, player.camera_zoom_target, 0.2);
-        // Refactor: I don't like how the cards position updates here.
-        // Tween cards
-        for (auto &card: cards) {
-            if (card.grabbed) continue;
-            if (!card.selected) {
-                card.body_rect.x = lerp<float>(card.body_rect.x, card.lock_target.x, 0.2);
-                card.body_rect.y = lerp<float>(card.body_rect.y, card.lock_target.y, 0.2);
-            } else {
-                card.body_rect.x = card.lock_target.x;
-                card.body_rect.y = card.lock_target.y;
-            }
-        }
 
-        // Cull deleted cards
-        cards.erase(std::remove_if(cards.begin(), cards.end(), [] (auto &card) {return card.deleted;}), cards.end());
-
-        /// Move subparts of cards
-        for (auto& card: cards) {
-            card.header_rec = {card.body_rect.x, card.body_rect.y - card.header_rec.height, card.body_rect.width - 30, card.header_rec.height};
-            card.close_button_rec = {card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - card.header_rec.height, 30, card.header_rec.height};
-            card.edit_button_rec = {card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30};
-            card.type_toggle_rec = {card.body_rect.x, card.body_rect.y + card.body_rect.height - 30, 50, 30};
-        }
+        update_cards(cards);
         update_palette(palette);
-
-        // Update focus
-        auto focus_text = to_c_str(current_project.focus);
-        auto focus_width = MeasureTextEx(application_font, focus_text.data(), 30, 1.0).x;
-        current_project.focus_rect = {(float) (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0)) - 16, 0, focus_width + 32, 30};
+        update_project(current_project);
 
         BeginDrawing();
         BeginMode2D(player.camera);
@@ -887,25 +982,23 @@ int main(void) {
 
         }
 
-        // Draw focus
-        DrawRectangleRec(current_project.focus_rect, current_project.focus_hover ? PURPLE : GRAY);
-        DrawTextEx(application_font, focus_text.data(), {(float (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0))), 0}, 30, 1.0, WHITE);
-
+        // Draw project (really just the focus for now 1/22/2021)
+        draw(current_project);
         // Draw palette
         draw(palette);
 
         switch (player.state) {
         case WRITING:
-            DrawText("Writing", 0, 0, 16, BLACK);
+            DrawText("Writing", 0, GetScreenHeight() - 16, 16, BLACK);
             break;
         case HOVERING:
-            DrawText("Hovering", 0, 0, 16, BLACK);
+            DrawText("Hovering", 0, GetScreenHeight() - 16, 16, BLACK);
             break;
         case GRABBING:
-            DrawText("Grabbing", 0, 0, 16, BLACK);
+            DrawText("Grabbing", 0, GetScreenHeight() - 16, 16, BLACK);
             break;
         case FOCUSWRITING:
-            DrawText("Focuswriting", 0, 0, 16, BLACK);
+            DrawText("Focuswriting", 0, GetScreenHeight() - 16, 16, BLACK);
             break;
         }
 

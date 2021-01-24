@@ -7,5 +7,12 @@ big picture
 legacies
 
 scenes
+card resizing
+when palette is opened, it opens 1/3 of the way, but can be resized. Whenever it reopens again, it opens back 1/3 of the way.
 
 fix project name centering
+
+server design
+what gets sent to the players?
+- cards
+- player world mouse positions
