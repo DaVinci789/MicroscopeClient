@@ -130,13 +130,30 @@ Vector2 lock_position_to_grid(Vector2 position) {
     };
 }
 
-Font application_font;
+#define FONTSIZE_SMALL 24
+#define FONTSIZE_REGULAR 32 
+#define FONTSIZE_LARGE 48
+
+Font application_font_small;
+Font application_font_regular;
+Font application_font_large;
+
+inline int get_font_size(Font *font) {
+    if (font == &application_font_small) {
+        return FONTSIZE_SMALL;
+    } else if (font == &application_font_regular) {
+        return FONTSIZE_REGULAR;
+    } else {
+        return FONTSIZE_LARGE;
+    }
+}
 
 struct Button {
     Rectangle rect;
     bool hover;
     std::string text;
     Texture texture;
+    Font *font;
 };
 
 Button init_button(Rectangle button_rect, std::string button_text = "", Texture texture = {0}) {
@@ -145,6 +162,7 @@ Button init_button(Rectangle button_rect, std::string button_text = "", Texture 
     button.hover = false;
     button.text = button_text;
     button.texture = texture;
+    button.font = &application_font_regular;
     return button;
 }
 
@@ -152,8 +170,8 @@ void update_button_hover(Button& button, Vector2 position) {
     button.hover = CheckCollisionPointRec(position, button.rect);
 }
 
-void draw(Button &button, Color depressed = PURPLE, Color pressed = GRAY) {
-    DrawRectangleRec(button.rect, button.hover ? depressed : pressed);
+void draw(Button &button, Color depressed = GRAY, Color pressed = PURPLE) {
+    DrawRectangleRec(button.rect, button.hover ? pressed : depressed);
 }
 
 struct Project {
@@ -165,7 +183,7 @@ struct Project {
 void update_project(Project& project) {
     // Update focus
     auto focus_text = to_c_str(project.focus.text);
-    auto focus_width = MeasureTextEx(application_font, focus_text.data(), 30, 1.0).x;
+    auto focus_width = MeasureTextEx(application_font_regular, focus_text.data(), 30, 1.0).x;
     project.focus.rect = {(float) (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0)) - 16, 0, focus_width + 32, 30};
 }
 
@@ -182,10 +200,16 @@ Project init_project(std::string project_name) {
 
 void draw(Project& project) {
     auto focus_text = to_c_str(project.focus.text);
-    auto focus_width = MeasureTextEx(application_font, focus_text.data(), 30, 1.0).x;
+    auto focus_width = MeasureTextEx(application_font_regular, focus_text.data(), 30, 1.0).x;
     draw(project.focus);
-    DrawTextEx(application_font, focus_text.data(), {(float (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0))), 0}, 30, 1.0, WHITE);
+    DrawTextEx(application_font_regular, focus_text.data(), {(float (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0))), 0}, 30, 1.0, WHITE);
 }
+
+enum PaletteType {
+    YES,
+    NO,
+};
+
 
 struct Palette {
     bool open;
@@ -220,17 +244,6 @@ Palette init_palette() {
     palette.open = false;
     palette.yes = std::vector<std::string>();
     palette.no = std::vector<std::string>();
-    palette.yes.push_back("nocheckin");
-    palette.yes.push_back("nocheckin");
-    palette.yes.push_back("nocheckin");
-    palette.yes.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
-    palette.no.push_back("nocheckin");
 
     palette.open_button.hover = false;
     palette.palette_body_rec = {0};
@@ -241,6 +254,14 @@ Palette init_palette() {
 
 void toggle_palette(Palette& palette) {
     palette.open = !palette.open;
+}
+
+void add_palette_slot(Palette& palette, PaletteType type) {
+    if (type == YES) {
+        palette.yes.push_back(" ");
+    } else {
+        palette.no.push_back(" ");
+    }
 }
 
 enum CardType {
@@ -255,11 +276,20 @@ enum Tone {
     DARK
 };
 
+
+enum FontSize {
+    SMALL,
+    REGULAR,
+    LARGE
+};
+
 struct Card {
     std::string name;
     std::string content;
     std::string last_name;
     std::string last_content;
+    FontSize fontsize;
+    Font *font;
     CardType type;
     Tone tone;
     bool deleted;
@@ -272,15 +302,11 @@ struct Card {
 
     Rectangle header_rec;
 
-    // Rectangle close_button_rec;
-    // Rectangle edit_button_rec;
-    // Rectangle type_toggle_rec;
-    // bool close_hover;
-    // bool button_hover;
-    // bool type_toggle_hover;
     Button close_button;
     Button edit_button;
     Button tone_button;
+    Button increase_font_button;
+    Button decrease_font_button;
 
     int depth;
     bool drawn;
@@ -293,6 +319,8 @@ Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD) {
     card.content = "";
     card.last_name = name;
     card.last_content = "";
+    card.fontsize = REGULAR;
+    card.font = &application_font_regular;
     card.type = type;
     card.tone = LIGHT;
     card.deleted  = false;
@@ -305,8 +333,9 @@ Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD) {
     card.close_button    = init_button({card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height});
     card.edit_button = init_button({card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30});
     card.tone_button = init_button({card.body_rect.x, card.body_rect.height - 30, 50, 30});
+    card.increase_font_button = init_button({card.body_rect.x + 10 + 50, card.body_rect.y - 30, 50, 30});
+    card.decrease_font_button = init_button({card.body_rect.x + 10 + 100, card.body_rect.y - 30, 50, 30});
 
-    // card.header_hover = false;
     card.depth = 0;
     card.drawn = false;
     return card;
@@ -371,6 +400,10 @@ void update_cards(std::vector<Card>& cards) {
         card.tone_button.rect = {card.body_rect.x,
             card.body_rect.y + card.body_rect.height - 30, 50,
             30};
+        card.increase_font_button.rect =
+            {card.body_rect.x + 10 + 50, card.body_rect.y + card.body_rect.height - 30, 50, 30};
+        card.decrease_font_button.rect = 
+            {card.body_rect.x + 10 + 100, card.body_rect.y + card.body_rect.height - 30, 50, 30};
     }
 }
 
@@ -383,6 +416,7 @@ enum PlayerState {
     GRABBING,
     SELECTING, // Click and dragging on the background
 };
+
 
 enum WhichEdit {
     NAME,
@@ -410,6 +444,7 @@ struct Player {
     KeyBinds binds;
     PlayerState state;
     WhichEdit editing;
+    PaletteType palette_edit_type;
 
     Vector2 hold_origin;
     Vector2 hold_diff;
@@ -578,8 +613,11 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
     player.player_rect.x = position.x;
     player.player_rect.y = position.y;
 
+    palette.open_button.hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.open_button.rect);
+
     // Mouse and Card Selection
     for (auto &card: cards) {
+        if (palette.open_button.hover) break; // skip checking the cards if the players is hovering over the palette open thingie
         // Drag Card?
         if (IsMouseButtonPressed(0) && collide(player.player_rect, {card.body_rect.x, card.body_rect.y - 30, card.body_rect.width, card.body_rect.height + 30})) {
             player.mouse_held = true;
@@ -592,12 +630,12 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.offset = {player.player_rect.x - card.body_rect.x, player.player_rect.y - card.body_rect.y};
             player.selected_card = &card;
         }
-        // FIXME: The button logic shouldn't be in this function!
         update_button_hover(card.close_button, position);
         update_button_hover(card.edit_button, position);
         update_button_hover(card.tone_button, position);
+        update_button_hover(card.increase_font_button, position);
+        update_button_hover(card.decrease_font_button, position);
     }
-    palette.open_button.hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.open_button.rect);
 
     if (IsMouseButtonPressed(0) && player.selected_card) {
         auto deepest_card = greatest_depth_and_furthest_along(cards);
@@ -615,10 +653,53 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         } else if (player.selected_card->tone_button.hover) {
             if (player.selected_card->color == WHITE) player.selected_card->color = BLACK;
             else player.selected_card->color = WHITE;
+        } else if (player.selected_card->increase_font_button.hover) {
+            FontSize *the_size = &player.selected_card->fontsize;
+            switch (player.selected_card->fontsize) {
+            case SMALL: 
+                print(200);
+                *the_size = REGULAR;
+                player.selected_card->font = &application_font_regular;
+                break;
+            case REGULAR: 
+                *the_size = LARGE;
+                player.selected_card->font = &application_font_large;
+                break;
+            case LARGE: 
+                *the_size = SMALL;
+                player.selected_card->font = &application_font_small;
+                break;
+            }
+        } else if (player.selected_card->decrease_font_button.hover) {
+            FontSize *the_size = &player.selected_card->fontsize;
+            switch (player.selected_card->fontsize) {
+            case SMALL: 
+                *the_size = LARGE;
+                player.selected_card->font = &application_font_large;
+                break;
+            case REGULAR: 
+                *the_size = SMALL;
+                player.selected_card->font = &application_font_small;
+                break;
+            case LARGE: 
+                *the_size = REGULAR;
+                player.selected_card->font = &application_font_regular;
+                break;
+            }
         }
     } else if (IsMouseButtonPressed(0)) { // Player clicks, but is not on a card
         if (palette.open_button.hover) {
             toggle_palette(palette);
+            return;
+        } else if (palette.yes_button.hover) {
+            player.state = PALETTEWRITING;
+            player.palette_edit_type = YES;
+            add_palette_slot(palette, YES);
+            return;
+        } else if (palette.no_button.hover) {
+            player.state = PALETTEWRITING;
+            player.palette_edit_type = NO;
+            add_palette_slot(palette, NO);
             return;
         } else if (project.focus.hover) { // Focus clicked
             player.state = FOCUSWRITING;
@@ -713,12 +794,20 @@ void player_grabbing_update(Player& player, std::vector<Card>& cards) {
     }
 }
 
-void player_write_palette_update(Player& player) {
+void player_write_palette_update(Player& player, Palette &palette) {
     if (IsKeyPressed(KEY_ESCAPE)) {
         player.state = HOVERING;
         return;
     }
-    return;
+    std::string& last_item = player.palette_edit_type == YES ? palette.yes.back() : palette.no.back();
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        if (last_item.size() > 1) last_item.pop_back();
+        return;
+    }
+    auto char_pressed = GetCharPressed();
+    if (char_pressed != 0) {
+        last_item += (char) char_pressed;
+    }
 }
 
 void player_write_focus_update(Player& player, Project& project) {
@@ -782,7 +871,7 @@ void draw(Card &card, Camera2D camera, Player player) {
     card.body_rect.y += 5;
     card.body_rect.width -= 5;
     card.body_rect.height -= 5;
-    DrawTextRec(application_font, content.data(), card.body_rect, 24, 1.0, true, card.color == BLACK ? WHITE : BLACK);
+    DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 1.0, true, card.color == BLACK ? WHITE : BLACK);
     card.body_rect.x -= 5;
     card.body_rect.y -= 5;
     card.body_rect.width += 5;
@@ -802,16 +891,21 @@ void draw(Card &card, Camera2D camera, Player player) {
         DrawRectangleRec(card.edit_button.rect, GRAY);
     }
 
-    float vertical_offset = (card.edit_button.rect.height - MeasureTextEx(application_font, "Edit", 24.0, 1.0).y) / 2.0;
-    float horizontal_offset = (card.edit_button.rect.width - MeasureTextEx(application_font, "Edit", 24.0, 1.0).x) / 2.0;
+    // Draw Card text
+    float vertical_offset = (card.edit_button.rect.height - MeasureTextEx(application_font_small, "Edit", FONTSIZE_SMALL, 1.0).y) / 2.0;
+    float horizontal_offset = (card.edit_button.rect.width - MeasureTextEx(application_font_small, "Edit", FONTSIZE_SMALL, 1.0).x) / 2.0;
     card.edit_button.rect.x += vertical_offset - 3;
     card.edit_button.rect.y += vertical_offset;
-    DrawTextRec(application_font, "Edit", card.edit_button.rect, 24.0, 1.0, false, WHITE);
+    DrawTextRec(application_font_small, "Edit", card.edit_button.rect, FONTSIZE_SMALL, 1.0, false, WHITE);
     card.edit_button.rect.x -= vertical_offset - 3;
     card.edit_button.rect.y -= vertical_offset;
+
+    // Draw Font increase buttons
+    draw(card.increase_font_button, BLUE);
+    draw(card.decrease_font_button, BROWN);
 }
 
-void draw(Palette palette) {
+void draw(Palette& palette) {
     // draw Palette open button
     DrawRectangleRec(palette.open_button.rect, palette.open_button.hover ? PURPLE : GRAY);
     if (!palette.open) return;
@@ -831,12 +925,20 @@ void draw(Palette palette) {
         auto text_as_cstr = to_c_str(text);
         auto text_width = MeasureTextEx(GetFontDefault(), text_as_cstr.data(), 30, 1.0).x;
         DrawText(text_as_cstr.data(), palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+
         Rectangle button_rect = {palette.palette_body_rec.x + text_width + 32, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
-        DrawRectangleRec(button_rect, CheckCollisionPointRec(mouse_position, button_rect) ? PURPLE : RED);
+        bool button_hover = CheckCollisionPointRec(mouse_position, button_rect);
+        DrawRectangleRec(button_rect, button_hover ? PURPLE : RED);
+        if (IsMouseButtonPressed(0) && button_hover) {
+            auto position = std::find(palette.yes.begin(), palette.yes.end(), text);
+            if (position != palette.yes.end()) palette.yes.erase(position);
+        }
+
         text_index += 1;
     }
+
     // Draw Add button
-    draw(palette.yes_button, PURPLE, GREEN);
+    draw(palette.yes_button, GREEN, PURPLE);
 
     DrawText("No", palette.palette_body_rec.x, palette.palette_body_rec.y + (palette.yes.size() + 3) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
     text_index += 2;
@@ -844,11 +946,18 @@ void draw(Palette palette) {
         auto text_as_cstr = to_c_str(text);
         auto text_width = MeasureTextEx(GetFontDefault(), text_as_cstr.data(), 30, 1.0).x;
         DrawText(text_as_cstr.data(), palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+
         Rectangle button_rect = {palette.palette_body_rec.x + text_width + 32, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
-        DrawRectangleRec(button_rect, CheckCollisionPointRec(mouse_position, button_rect) ? PURPLE : RED);
+        bool button_hover = CheckCollisionPointRec(mouse_position, button_rect);
+        DrawRectangleRec(button_rect, button_hover ? PURPLE : RED);
+        if (IsMouseButtonPressed(0) && button_hover) {
+            auto position = std::find(palette.no.begin(), palette.no.end(), text);
+            if (position != palette.no.end()) palette.no.erase(position);
+        }
+
         text_index += 1;
     }
-    draw(palette.no_button, PURPLE, GREEN);
+    draw(palette.no_button, GREEN, PURPLE);
 
 }
 
@@ -867,8 +976,12 @@ int main(void) {
 
     SetWindowIcon(LoadImage("assets/logo.png"));
 
-    application_font = LoadFontEx("monogram_extended.ttf", 24 * 3, NULL, 250);
-    Defer {UnloadFont(application_font);};
+    application_font_small  = LoadFontEx("monogram_extended.ttf", FONTSIZE_SMALL, NULL, 250);
+    application_font_regular = LoadFontEx("monogram_extended.ttf", FONTSIZE_REGULAR, NULL, 250);
+    application_font_large  = LoadFontEx("monogram_extended.ttf", FONTSIZE_LARGE, NULL, 250);
+    Defer {UnloadFont(application_font_small);};
+    Defer {UnloadFont(application_font_regular);};
+    Defer {UnloadFont(application_font_large);};
 
     Project current_project = init_project("New Game");
     Palette palette = init_palette();
@@ -898,7 +1011,7 @@ int main(void) {
             player_write_focus_update(player, current_project);
             break;
         case PALETTEWRITING:
-            player_write_palette_update(player);
+            player_write_palette_update(player, palette);
             break;
         case HOVERING:
             player_hover_update(player, cards, palette, current_project);
@@ -933,8 +1046,8 @@ int main(void) {
         // Draw Description Lines and Project Name
         DrawLineEx((Vector2) {0, -100000}, (Vector2) {0, 100000}, 3.0, WHITE);
         DrawLineEx((Vector2) {-100000, 0}, (Vector2) {100000, 0}, 3.0, WHITE);
-        DrawRectangle(1, 1, MeasureTextEx(application_font, current_project.big_picture.c_str(), 30, 1.0).x + 16, MeasureTextEx(application_font, current_project.big_picture.c_str(), 30, 1.0).y, WHITE);
-        DrawTextEx(application_font, current_project.big_picture.c_str(), {8, -1}, 30, 1.0, BLACK);
+        DrawRectangle(1, 1, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), 30, 1.0).x + 16, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), 30, 1.0).y, WHITE);
+        DrawTextEx(application_font_regular, current_project.big_picture.c_str(), {8, -1}, 30, 1.0, BLACK);
 
         Defer {
             for (auto &card: cards) {
@@ -991,6 +1104,9 @@ int main(void) {
             break;
         case FOCUSWRITING:
             DrawText("Focuswriting", 0, GetScreenHeight() - 16, 16, BLACK);
+            break;
+        case PALETTEWRITING:
+            DrawText("Palettewriting", 0, GetScreenHeight() - 16, 16, BLACK);
             break;
         }
 
