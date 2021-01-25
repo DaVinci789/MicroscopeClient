@@ -92,7 +92,6 @@
     #define _WIN32_WINNT                0x0600 // Windows 8.1
 
 // raylib stuff
-#ifdef _WIN32
 #define NOGDICAPMASKS     // CC_*, LC_*, PC_*, CP_*, TC_*, RC_
 #define NOVIRTUALKEYCODES // VK_*
 #define NOWINMESSAGES     // WM_*, EM_*, LB_*, CB_*
@@ -113,7 +112,7 @@
 #define NOGDI             // All GDI defines and routines
 #define NOKERNEL          // All KERNEL defines and routines
 #define NOUSER            // All USER defines and routines
-/*#define NONLS             // All NLS defines and routines*/
+#define NONLS             // All NLS defines and routines
 #define NOMB              // MB_* and MessageBox()
 #define NOMEMMGR          // GMEM_*, LMEM_*, GHND, LHND, associated routines
 #define NOMETAFILE        // typedef METAFILEPICT
@@ -132,10 +131,10 @@
 #define NOPROFILER        // Profiler interface.
 #define NODEFERWINDOWPOS  // DeferWindowPos routines
 #define NOMCX             // Modem Configuration Extensions
+#define MMNOSOUND
 
 /* Type required before windows.h inclusion  */
 typedef struct tagMSG *LPMSG;
-#endif
 
 
     #include <winsock2.h>

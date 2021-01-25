@@ -12,6 +12,9 @@ when palette is opened, it opens 1/3 of the way, but can be resized. Whenever it
 
 fix project name centering
 
+ui
+- pull cards from top left corner
+
 server design
 what gets sent to the players?
 - cards

@@ -1,4 +1,6 @@
 #!/bin/bash
 
-g++ main.cpp -g -lraylib -o main
-x86_64-w64-mingw32-g++ main.cpp -static-libstdc++ -lwinpthread -lraylib -lwinmm -lkernel32 -lntdll -lws2_32 -o windows/main.exe
+make -j4
+rm *.o
+make CXX=x86_64-w64-mingw32-g++ CXXFLAGS=-static-libstdc++ LIBS="-lws2_32 -lraylib -lwinmm" TARGET=windows/main.exe
+rm *.o
