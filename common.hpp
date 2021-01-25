@@ -9,6 +9,9 @@
 #include <cstdio>
 #include <algorithm>
 
+#define CARDWHITE (Color) { 248, 248, 248, 255 }
+#define CARDBLACK (Color) { 56, 56, 84, 255 }
+
 template<typename F>
 class defer_finalizer {
     F f;
@@ -63,6 +66,8 @@ T center(T large, T small) {
     return (large / small) / 2.0;
 }
 
+extern Texture2D spritesheet;
+
 bool collide(Rectangle rect1, Rectangle rect2);
 
 void print(bool the_bool);
@@ -71,9 +76,9 @@ void print(int n);
 void print(float n);
 void print(Rectangle rect);
 
-#define FONTSIZE_SMALL 24
-#define FONTSIZE_REGULAR 32 
-#define FONTSIZE_LARGE 48
+#define FONTSIZE_SMALL 16.0
+#define FONTSIZE_REGULAR 24.0
+#define FONTSIZE_LARGE 48.0
 
 extern Font application_font_small;
 extern Font application_font_regular;

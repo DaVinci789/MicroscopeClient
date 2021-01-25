@@ -108,6 +108,7 @@ void player_write_update(Player& player) {
         }
         player.state = HOVERING;
         player.selected_card->grabbed = false;
+        player.selected_card->selected = false;
         player.selected_card = NULL;
         return;
     }
@@ -165,26 +166,33 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
     update_button_hover(project.start_server, mouse_position);
     update_button_hover(project.start_client, mouse_position);
 
+    Card *player_card_over = &cards[0]; // Card that the player is hovering over
+    bool found_card = false;
     // Mouse and Card Selection
     for (auto &card: cards) {
         if (palette.open_button.hover) break; // skip checking the cards if the players is hovering over the palette open thingie
-        // Drag Card?
-        if (IsMouseButtonPressed(0) && collide(player.player_rect, {card.body_rect.x, card.body_rect.y - 30, card.body_rect.width, card.body_rect.height + 30})) {
-            player.mouse_held = true;
-
-            // If the game has found a card for the player to hold and the next card in the unsorted array of cards is lower than that card, skip it. 
-            if (player.selected_card) {
-                if (card.depth < player.selected_card->depth) continue;
-            }
-            card.grabbed = true;
-            player.offset = {player.player_rect.x - card.body_rect.x, player.player_rect.y - card.body_rect.y};
-            player.selected_card = &card;
+        if (CheckCollisionPointRec(position, card.body_rect)) {
+            found_card = true;
+            // if (player_card_over != NULL) {
+            //     if (card.depth < player_card_over->depth) continue;
+            // }
+            player_card_over = &card;
         }
         update_button_hover(card.close_button, position);
         update_button_hover(card.edit_button, position);
         update_button_hover(card.tone_button, position);
         update_button_hover(card.increase_font_button, position);
         update_button_hover(card.decrease_font_button, position);
+    }
+    if (!found_card) player_card_over = NULL;
+
+    if (player_card_over != NULL) player_card_over->hover = true;
+
+    if (IsMouseButtonPressed(0) && player_card_over != NULL) {
+        player.mouse_held = true;
+        player.selected_card = player_card_over;
+        player.offset = {player.player_rect.x - player.selected_card->body_rect.x, player.player_rect.y - player.selected_card->body_rect.y};
+        player_card_over->grabbed = true;
     }
 
     if (IsMouseButtonPressed(0) && player.selected_card) {

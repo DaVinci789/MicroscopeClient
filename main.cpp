@@ -37,6 +37,8 @@ Font application_font_small;
 Font application_font_regular;
 Font application_font_large;
 
+Texture2D spritesheet;
+
 Texture generate_grid() {
     auto data = std::vector<char>();
     int gridsize = GRIDSIZE;
@@ -69,19 +71,20 @@ int main(void) {
     SetExitKey(-1);
     Defer {CloseWindow();};
 
+    spritesheet = LoadTexture("assets/spritesheet.png");
+    Defer {UnloadTexture(spritesheet);};
+
     auto logo = LoadImage("assets/logo.png");
     Defer {UnloadImage(logo);};
 
     SetWindowIcon(logo);
 
-    application_font_small  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_SMALL, NULL, 250);
-    application_font_regular = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_REGULAR, NULL, 250);
-    application_font_large  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_LARGE, NULL, 250);
+    application_font_small  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_SMALL, NULL, 256);
+    application_font_regular = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_REGULAR, NULL, 256);
+    application_font_large  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_LARGE, NULL, 256);
     Defer {UnloadFont(application_font_small);};
     Defer {UnloadFont(application_font_regular);};
     Defer {UnloadFont(application_font_large);};
-
-    auto spritesheet = LoadTexture("assets/spritesheet.png");
 
     Project current_project = init_project("New Game");
     Palette palette = init_palette();
@@ -96,7 +99,6 @@ int main(void) {
     #endif
 
     while (!WindowShouldClose() && signal_handler) {
-
         if (is_server) {
             event_status = enet_host_service(server, &event, 0);
             if (event_status > 0) {
@@ -161,11 +163,11 @@ int main(void) {
         auto src = (Rectangle) {-100000, -100000, 200000, 200000};
         auto dst = src;
         DrawTexturePro(grid_texture, src, dst, (Vector2){0, 0}, 0, RAYWHITE);
-        // Draw Description Lines and Project Name
+        // Draw Description Lines and Big Picture
         DrawLineEx((Vector2) {0, -100000}, (Vector2) {0, 100000}, 3.0, WHITE);
         DrawLineEx((Vector2) {-100000, 0}, (Vector2) {100000, 0}, 3.0, WHITE);
-        DrawRectangle(1, 1, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), 30, 1.0).x + 16, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), 30, 1.0).y, WHITE);
-        DrawTextEx(application_font_regular, current_project.big_picture.c_str(), {8, -1}, 30, 1.0, BLACK);
+        DrawRectangle(1, 1, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).x + 16, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).y, WHITE);
+        DrawTextEx(application_font_regular, current_project.big_picture.c_str(), {8, -1}, FONTSIZE_REGULAR, 1.0, BLACK);
 
         Defer {
             for (auto &card: cards) {

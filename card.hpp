@@ -24,6 +24,7 @@ struct Card {
     std::string content;
     std::string last_name;
     std::string last_content;
+    Texture2D *textures;
     FontSize fontsize;
     Font *font;
     CardType type;
@@ -31,6 +32,7 @@ struct Card {
     bool deleted;
     bool grabbed;
     bool selected;
+    bool hover;
 
     Rectangle body_rect;
     Vector2 lock_target;
