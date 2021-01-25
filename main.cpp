@@ -8,131 +8,83 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <cstdio>
 #include <algorithm>
 #include "common.hpp"
 
-#define GRIDSIZE 16
+#define ENET_IMPLEMENTATION
+#include "enet.h"
 
-template<typename T>
-T clamp(T value, T lower, T upper) {
-    if (value < lower) return lower;
-    else if (value > upper) return upper;
-    else return value;
-}
+#define ENETPORT 7777
+#define MAX_CLIENTS 8
 
-template<typename T>
-T lerp(T a, T b, float f)
-{
-    return a + f * (b - a);
-}
+bool is_server = false;
+bool is_client = false;
 
-template<>
-Vector2 lerp<Vector2>(Vector2 v1, Vector2 v2, float amount)
-{
-    Vector2 result = { 0 };
+// Initialize server
+ENetAddress address;
+ENetHost *server = NULL;
+ENetEvent event;
+int event_status;
 
-    result.x = v1.x + amount*(v2.x - v1.x);
-    result.y = v1.y + amount*(v2.y - v1.y);
-
-    return result;
-}
-
-Vector2 floor(Vector2 vector) {
-    return (Vector2) {(float) floor(vector.x), (float) floor(vector.y)};
-}
-
-std::vector<char> to_c_str(std::string string) {
-    auto the_string = std::vector<char>();
-    for (auto &character: string) {
-        the_string.push_back((char) character);
+int init_server() {
+    if (enet_initialize() != 0) {
+        std::cout << "failure to init enet" << std::endl;
+        return -1;
     }
-    the_string.push_back((char) '\0');
-    return the_string;
+
+    address.host = ENET_HOST_ANY;
+    address.port = ENETPORT;
+    server = enet_host_create(&address, MAX_CLIENTS, 2, 0, 0);
+    if (server == NULL) {
+        std::cout << "failure to create server host" << std::endl;
+        return -1;
+    }
+    is_server = true;
+    return 0;
 }
 
-bool operator==(Color lh, Color rh) {
-    return lh.r == rh.r && lh.g == rh.g && lh.b == rh.b && lh.a == rh.a;
+#define GAMESERVER_PORT     7777
+#define GAMESERVER_TICKRATE 30
+
+ENetHost *client = NULL;
+ENetPeer *peer = NULL;
+int enet_event_status;
+
+int init_client(const char *ip = "10.0.0.52") {
+    if (enet_initialize() != 0) {
+        std::cout << "failure to init enet" << std::endl;
+        return -1;
+    }
+    client = enet_host_create(NULL, 1, 2, 0, 0);
+    if (client == NULL) {
+        std::cout << "failure to create client" << std::endl;
+        return -1;
+    }
+    enet_address_set_host(&address, ip);
+    address.port = GAMESERVER_PORT;
+    peer = enet_host_connect(client, &address, 2, 0);
+    if (peer == NULL) {
+        std::cout << "no avaliable peers for initiating a connection" << std::endl;
+        return -1;
+    }
+    enet_event_status = enet_host_service(client, &event, 1000);
+    is_client = true;
+    return 0;
 }
 
-Vector2 operator-(Vector2 v1, Vector2 v2) {
-    Vector2 result = { v1.x - v2.x, v1.y - v2.y };
-    return result;
+void client_publish() {
+    ENetPacket *packet = enet_packet_create((char*)"Hello, World!", 13, ENET_PACKET_FLAG_RELIABLE);
+    enet_peer_send(peer, 0, packet);
+    enet_host_flush(client);
 }
 
-Vector2 operator+(Vector2 v1, Vector2 v2) {
-    Vector2 result = { v1.x + v2.x, v1.y + v2.y };
-    return result;
-}
-
-Vector2 operator/(Vector2 v1, Vector2 v2) {
-    Vector2 result = { v1.x / v2.x, v1.y / v2.y };
-    return result;
-}
-
-Vector2 operator*(Vector2 v, float f) {
-    return (Vector2) {v.x * f, v.y * f};
-}
-
-template<typename T>
-T center(T large, T small) {
-    return (large / small) / 2.0;
-}
-
-bool collide(Rectangle rect1, Rectangle rect2) {
-    return CheckCollisionRecs(rect1, rect2);
-}
-
-void print(bool the_bool) {
-    std::cout << (the_bool ? "true" : "false") << std::endl;
-}
-
-void print(Vector2 vector) {
-    std::cout << "(" << vector.x << " " << vector.y << ")" << std::endl;
-}
-
-void print(int n) {
-    std::cout << n << std::endl;
-}
-
-void print(float n) {
-    std::cout << n << std::endl;
-}
-
-void print(Rectangle rect) {
-    std::cout << "(" << rect.x << " " << rect.y << " " << rect.width << " " << rect.height << ")" << std::endl;
-}
-
-Vector2 get_world_mouse_position(Camera2D camera) {
-    auto position = camera.target;
-    auto mouse_position = GetMousePosition();
-    mouse_position.x -= (float) GetScreenWidth() / 2.0;
-    mouse_position.y -= (float) GetScreenHeight() / 2.0;
-    mouse_position.x /= camera.zoom;
-    mouse_position.y /= camera.zoom;
-
-    position.x += mouse_position.x;
-    position.y += mouse_position.y;
-
-    return position;
-}
-
-Vector2 previous_mouse_position = {0};
-
-Vector2 get_mouse_delta() {
-    Vector2 vec = GetMousePosition() - previous_mouse_position;
-    return vec;
-}
-
-Vector2 lock_position_to_grid(Vector2 position) {
-    return (Vector2) {
-        (float) round(position.x / (float) GRIDSIZE) * (float) GRIDSIZE,
-        (float) round(position.y / (float) GRIDSIZE) * (float) GRIDSIZE
-    };
-}
 
 #define FONTSIZE_SMALL 24
 #define FONTSIZE_REGULAR 32 
 #define FONTSIZE_LARGE 48
+
+Vector2 previous_mouse_position = {0};
 
 Font application_font_small;
 Font application_font_regular;
@@ -178,6 +130,8 @@ struct Project {
     std::string big_picture;
     std::string last_focus_text;
     Button focus;
+    Button start_server;
+    Button start_client;
 };
 
 void update_project(Project& project) {
@@ -185,16 +139,18 @@ void update_project(Project& project) {
     auto focus_text = to_c_str(project.focus.text);
     auto focus_width = MeasureTextEx(application_font_regular, focus_text.data(), 30, 1.0).x;
     project.focus.rect = {(float) (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0)) - 16, 0, focus_width + 32, 30};
+    project.start_server.rect = {(float) (GetScreenWidth() - 32.0), 0, 32, 32};
+    project.start_client.rect = {(float) (GetScreenWidth() - 64.0), 0, 32, 32};
 }
 
 Project init_project(std::string project_name) {
     Project project;
     project.big_picture = project_name;
-
     update_project(project); // sets focus_rect
     project.focus.text = "No Focus Set";
-
     project.last_focus_text = "No Focus Set";
+    project.start_server = init_button({0});
+    project.start_client = init_button({0});
     return project;
 }
 
@@ -203,6 +159,9 @@ void draw(Project& project) {
     auto focus_width = MeasureTextEx(application_font_regular, focus_text.data(), 30, 1.0).x;
     draw(project.focus);
     DrawTextEx(application_font_regular, focus_text.data(), {(float (GetScreenWidth() / 2.0 - (float) (focus_width / 2.0))), 0}, 30, 1.0, WHITE);
+
+    draw(project.start_server, ORANGE);
+    draw(project.start_client, BLUE);
 }
 
 enum PaletteType {
@@ -614,6 +573,8 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
     player.player_rect.y = position.y;
 
     palette.open_button.hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.open_button.rect);
+    update_button_hover(project.start_server, mouse_position);
+    update_button_hover(project.start_client, mouse_position);
 
     // Mouse and Card Selection
     for (auto &card: cards) {
@@ -691,12 +652,12 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         if (palette.open_button.hover) {
             toggle_palette(palette);
             return;
-        } else if (palette.yes_button.hover) {
+        } else if (palette.yes_button.hover && palette.open) {
             player.state = PALETTEWRITING;
             player.palette_edit_type = YES;
             add_palette_slot(palette, YES);
             return;
-        } else if (palette.no_button.hover) {
+        } else if (palette.no_button.hover && palette.open) {
             player.state = PALETTEWRITING;
             player.palette_edit_type = NO;
             add_palette_slot(palette, NO);
@@ -705,6 +666,14 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.state = FOCUSWRITING;
             project.last_focus_text = project.focus.text;
             project.focus.text = "";
+            return;
+        } else if (project.start_server.hover) {
+            print(200);
+            init_server();
+            return;
+        } else if (project.start_client.hover) {
+            print(201);
+            init_client();
             return;
         } else {
             player.state = GRABBING; // Background drag
@@ -965,8 +934,9 @@ volatile int signal_handler = 1;
 void signal_func(int dummy) {
     signal_handler = 0;
 }
-
 int main(void) {
+    Defer {if (is_server || is_client) enet_deinitialize();};
+    SetTraceLogLevel(LOG_INFO);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
     InitWindow(800, 600, "Microscope RPG");
@@ -996,6 +966,24 @@ int main(void) {
     #endif
 
     while (!WindowShouldClose() && signal_handler) {
+
+        if (is_server) {
+            event_status = enet_host_service(server, &event, 0);
+            if (event_status > 0) {
+                switch (event.type) {
+                case ENET_EVENT_TYPE_CONNECT:
+                    printf("A new client connected from %x:%u.\n",
+                           event.peer -> address.host,
+                           event.peer -> address.port);
+                    break;
+                case ENET_EVENT_TYPE_RECEIVE:
+                    printf("%s\n", event.packet->data);
+                    break;
+                }
+            }
+        } else if (is_client) {
+            client_publish();
+        }
 
         // Update Game
         /// How I write update function sigs:
