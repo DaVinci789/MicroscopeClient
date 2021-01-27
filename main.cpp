@@ -138,6 +138,9 @@ int main(void) {
             player_write_update(player);
             player_resize_chosen_card(player);
             break;
+        case BIGPICTUREWRITING:
+            player_write_big_picture_update(player, current_project);
+            break;
         case FOCUSWRITING:
             player_write_focus_update(player, current_project);
             break;

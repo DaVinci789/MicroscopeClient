@@ -343,6 +343,14 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         spawn_card(player, cards, LEGACY);
     }
 
+    // Change big picture
+    /// @Incomplete: make this a button
+    if (IsKeyDown(KEY_F11)) {
+        print(200);
+        player.state = BIGPICTUREWRITING;
+        return;
+    }
+
     // Quit handling
     if (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) {
         if (IsKeyPressed(KEY_Q)) {
@@ -419,5 +427,19 @@ void player_write_focus_update(Player& player, Project& project) {
     }
     auto char_pressed = GetCharPressed();
     if (char_pressed != 0) project.focus.text += (char) char_pressed;
+    return;
+}
+
+void player_write_big_picture_update(Player &player, Project &project) {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        player.state = HOVERING;
+        return;
+    }
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        if (project.big_picture.size() > 0) project.big_picture.pop_back();
+        return;
+    }
+    auto char_pressed = GetCharPressed();
+    if (char_pressed != 0) project.big_picture += (char) char_pressed;
     return;
 }

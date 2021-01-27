@@ -48,8 +48,8 @@ void draw(Palette& palette) {
     // Draw Palette Body
     DrawRectangleRec(palette.palette_body_rec, GRAY);
 
-    DrawText("Palette", palette.palette_body_rec.x, palette.palette_body_rec.y, 30, WHITE);
-    DrawText("Yes", palette.palette_body_rec.x, palette.palette_body_rec.y + MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+    DrawTextEx(application_font_regular, "Palette", {palette.palette_body_rec.x, palette.palette_body_rec.y}, 30, 0.0, WHITE);
+    DrawTextEx(application_font_regular, "Yes", {palette.palette_body_rec.x, palette.palette_body_rec.y + MeasureTextEx(application_font_regular, "Yes", 30, 1.0).y}, 30, 0.0, WHITE);
     int text_index = 2;
 
     // HACK: We're doing a bit of update logic within this draw call where we poll the mouse location because it would be a bit unwieldy to split
@@ -60,7 +60,7 @@ void draw(Palette& palette) {
     for (auto& text: palette.yes) {
         auto text_as_cstr = to_c_str(text);
         auto text_width = MeasureTextEx(GetFontDefault(), text_as_cstr.data(), 30, 1.0).x;
-        DrawText(text_as_cstr.data(), palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+        DrawTextEx(application_font_regular, text_as_cstr.data(), {palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(application_font_regular, "Yes", 30, 1.0).y}, 30, 0.0, WHITE);
 
         Rectangle button_rect = {palette.palette_body_rec.x + text_width + 32, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
         bool button_hover = CheckCollisionPointRec(mouse_position, button_rect);
@@ -76,12 +76,12 @@ void draw(Palette& palette) {
     // Draw Add button
     draw(palette.yes_button, GREEN, PURPLE);
 
-    DrawText("No", palette.palette_body_rec.x, palette.palette_body_rec.y + (palette.yes.size() + 3) * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+    DrawTextEx(application_font_regular, "No", {palette.palette_body_rec.x, palette.palette_body_rec.y + (palette.yes.size() + 3) * MeasureTextEx(application_font_regular, "Yes", 30, 1.0).y}, 30, 0.0, WHITE);
     text_index += 2;
     for (auto& text: palette.no) {
         auto text_as_cstr = to_c_str(text);
         auto text_width = MeasureTextEx(GetFontDefault(), text_as_cstr.data(), 30, 1.0).x;
-        DrawText(text_as_cstr.data(), palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, WHITE);
+        DrawTextEx(application_font_regular, text_as_cstr.data(), {palette.palette_body_rec.x + 8, palette.palette_body_rec.y + text_index * MeasureTextEx(application_font_regular, "Yes", 30, 1.0).y}, 30, 0.0, WHITE);
 
         Rectangle button_rect = {palette.palette_body_rec.x + text_width + 32, palette.palette_body_rec.y + text_index * MeasureTextEx(GetFontDefault(), "Yes", 30, 1.0).y, 30, 30};
         bool button_hover = CheckCollisionPointRec(mouse_position, button_rect);

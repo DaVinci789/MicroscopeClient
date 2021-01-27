@@ -7,6 +7,7 @@ enum PlayerState {
     HOVERING, // Just looking, but still able to move cards around and such
     READONLY,
     WRITING,
+    BIGPICTUREWRITING,
     FOCUSWRITING,
     PALETTEWRITING,
     GRABBING,
@@ -57,5 +58,6 @@ void player_write_update(Player& player);
 void player_resize_chosen_card(Player& player);
 void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project);
 void player_grabbing_update(Player& player, std::vector<Card>& cards);
+void player_write_big_picture_update(Player &player, Project &project);
 void player_write_palette_update(Player& player, Palette &palette);
 void player_write_focus_update(Player& player, Project& project);

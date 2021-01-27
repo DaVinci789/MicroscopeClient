@@ -7,6 +7,7 @@ struct Project {
     Button focus;
     Button start_server;
     Button start_client;
+    Texture2D *textures;
 };
 
 void update_project(Project& project);
