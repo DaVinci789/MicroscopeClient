@@ -20,10 +20,10 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.body_rect = body_rect;
     card.lock_target = {body_rect.x, body_rect.y};
     card.color = WHITE;
-    card.header_rec      = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
-    card.close_button    = init_button({card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height});
-    card.edit_button = init_button({card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30});
-    card.tone_button = init_button({card.body_rect.x, card.body_rect.height - 30, 50, 30});
+    card.header_rec   = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
+    card.close_button = init_button({card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height});
+    card.edit_button  = init_button({card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30});
+    card.tone_button  = init_button({card.body_rect.x, card.body_rect.height - 30, 50, 30});
     card.increase_font_button = init_button({card.body_rect.x + 10 + 50, card.body_rect.y - 30, 50, 30});
     card.decrease_font_button = init_button({card.body_rect.x + 10 + 100, card.body_rect.y - 30, 50, 30});
 
@@ -95,29 +95,69 @@ void update_cards(std::vector<Card>& cards) {
     }
 }
 
+void draw_card_ui(Card &card, Camera2D camera) {
+    // Draw close button
+    /// Draw close texture
+    auto close_button_position = (Vector2) {-card.close_button.rect.x, -card.close_button.rect.y};
+    DrawTextureTiled(*card.textures, (Rectangle) {32, 0, 11, 12}, (Rectangle) {0, 0, 33, 36}, close_button_position, 0.0, 3.0, WHITE);
+
+    // Draw Card Edit Button
+    /// Draw Button Base
+    DrawTexturePro(*card.textures, (Rectangle) {43, 0, 7, 10}, (Rectangle) {card.edit_button.rect.x, card.edit_button.rect.y, 21, 30}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {50, 0, 1, 10}, (Rectangle) {card.edit_button.rect.x + 21, card.edit_button.rect.y, 63, 30}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {51, 0, 8, 10}, (Rectangle) {card.edit_button.rect.x + 84, card.edit_button.rect.y, 24, 30}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {77, 0, 17, 5}, (Rectangle) {card.edit_button.rect.x + 27, card.edit_button.rect.y + 6, 51, 15}, (Vector2) {0, 0}, 0.0, WHITE);
+
+    /// Draw Button Text
+    DrawTexturePro(*card.textures, (Rectangle) {43, 0, 7, 10}, (Rectangle) {card.tone_button.rect.x, card.tone_button.rect.y, 21, 30}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {50, 0, 1, 10}, (Rectangle) {card.tone_button.rect.x + 21, card.tone_button.rect.y, 63, 30}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {51, 0, 8, 10}, (Rectangle) {card.tone_button.rect.x + 84, card.tone_button.rect.y, 24, 30}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {77, 5, 17, 5}, (Rectangle) {card.tone_button.rect.x + 27, card.tone_button.rect.y + 6, 51, 15}, (Vector2) {0, 0}, 0.0, WHITE);
+
+    // Draw Font increase buttons
+    DrawTexturePro(*card.textures, (Rectangle) {59, 0, 9, 9}, (Rectangle) {card.increase_font_button.rect.x, card.increase_font_button.rect.y, 27, 27}, (Vector2) {0, 0}, 0.0, WHITE);
+    DrawTexturePro(*card.textures, (Rectangle) {68, 0, 9, 9}, (Rectangle) {card.decrease_font_button.rect.x, card.decrease_font_button.rect.y, 27, 27}, (Vector2) {0, 0}, 0.0, WHITE);
+}
+
 void draw(Card &card, Camera2D camera) {
     Defer {card.drawn = true;};
 
     auto position = GetScreenToWorld2D(GetMousePosition(), camera);
 
     // Draw Body
-    DrawRectangleRec((Rectangle) {card.body_rect.x + 3, card.body_rect.y + 3, card.body_rect.width - 3, card.body_rect.height - 3}, CARDWHITE);
+    DrawRectangleRec((Rectangle) {card.body_rect.x + 3, card.body_rect.y + 3, card.body_rect.width - 3, card.body_rect.height - 3}, card.tone == LIGHT ? CARDWHITE : CARDBLACK);
     auto top_left     = (Vector2) {-card.body_rect.x, -card.body_rect.y};
     auto top_right    = (Vector2) {-card.body_rect.x - card.body_rect.width + 12, -card.body_rect.y};
     auto bottom_left  = (Vector2) {-card.body_rect.x, -card.body_rect.y - card.body_rect.height + 12};
     auto bottom_right = (Vector2) {-card.body_rect.x - card.body_rect.width + 12, -card.body_rect.y -card.body_rect.height + 12};
-    DrawTexturePro(*card.textures, (Rectangle) {0, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {12, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {0, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {12, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
+    if (card.tone == LIGHT) {
+        DrawTexturePro(*card.textures, (Rectangle) {0, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {12, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {0, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {12, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
 
-    // Horizontal bars
-    DrawTexturePro(*card.textures, (Rectangle) {4, 0, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {4, 13, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y - card.body_rect.height + 9}, 0.0, WHITE);
+        // Horizontal bars
+        DrawTexturePro(*card.textures, (Rectangle) {4, 0, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y}, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {4, 13, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y - card.body_rect.height + 9}, 0.0, WHITE);
 
-    // Vertical bars
-    DrawTexturePro(*card.textures, (Rectangle) {0, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x, -card.body_rect.y - 9}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {13, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x - card.body_rect.width + 9, -card.body_rect.y - 9}, 0.0, WHITE);
+        // Vertical bars
+        DrawTexturePro(*card.textures, (Rectangle) {0, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x, -card.body_rect.y - 9}, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {13, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x - card.body_rect.width + 9, -card.body_rect.y - 9}, 0.0, WHITE);
+
+    } else {
+        DrawTexturePro(*card.textures, (Rectangle) {16, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {12 + 16, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {16, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {12 + 16, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
+
+        // Horizontal bars
+        DrawTexturePro(*card.textures, (Rectangle) {4 + 16, 0, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y}, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {4 + 16, 13, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y - card.body_rect.height + 9}, 0.0, WHITE);
+
+        // Vertical bars
+        DrawTexturePro(*card.textures, (Rectangle) {16, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x, -card.body_rect.y - 9}, 0.0, WHITE);
+        DrawTexturePro(*card.textures, (Rectangle) {13 + 16, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x - card.body_rect.width + 9, -card.body_rect.y - 9}, 0.0, WHITE);
+    }
 
     // Draw Card Content
     auto content = std::vector<char>();
@@ -125,69 +165,51 @@ void draw(Card &card, Camera2D camera) {
         content.push_back((char) c);
     }
     content.push_back((char) '\0');
-    card.body_rect.x += 5;
-    card.body_rect.y += 5;
-    card.body_rect.width -= 5;
-    card.body_rect.height -= 5;
-    DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 1.0, true, card.color == BLACK ? WHITE : BLACK);
-    card.body_rect.x -= 5;
-    card.body_rect.y -= 5;
-    card.body_rect.width += 5;
-    card.body_rect.height += 5;
+    card.body_rect.x += 9;
+    card.body_rect.y += 30;
+    card.body_rect.width -= 9;
+    card.body_rect.height -= 39;
+    DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+    card.body_rect.x -= 9;
+    card.body_rect.y -= 30;
+    card.body_rect.width += 9;
+    card.body_rect.height += 39;
 
     // Draw Selection outline
     if (card.selected) {
         DrawRectangleLinesEx(card.body_rect, 5.0, BLUE);
     }
 
-    if (!card.hover) return;
+    // NOTE: Remember, we scale every pixel asset by 3x!
+    // TODO: Maybe make it so we don't have to manually calculate `rect` offsets?
+    switch (card.type) {
+    case PERIOD: {
+        Rectangle rect = {card.body_rect.x + (card.body_rect.width / 2 - 31), card.body_rect.y + 9, 21 * 3, 4 * 3};
+        DrawTexturePro(*card.textures, (Rectangle) {94, 0, 21, 4}, rect, (Vector2) {0, 0}, 0.0, WHITE);
+        break;
+    }
+    case EVENT: {
+        Rectangle rect = {card.body_rect.x + (card.body_rect.width / 2 - 28), card.body_rect.y + 9, 19 * 3, 4 * 3};
+        DrawTexturePro(*card.textures, (Rectangle) {94, 4, 19, 4}, rect, (Vector2) {0, 0}, 0.0, WHITE);
+        break;
+    }
+    case SCENE: {
+        Rectangle rect = {card.body_rect.x + (card.body_rect.width / 2 - 28), card.body_rect.y + 9, 19 * 3, 4 * 3};
+        DrawTexturePro(*card.textures, (Rectangle) {94, 8, 19, 4}, rect, (Vector2) {0, 0}, 0.0, WHITE);
+        break;
+    }
+    case LEGACY: {
+        Rectangle rect = {card.body_rect.x + (card.body_rect.width / 2 - 34), card.body_rect.y + 9, 23 * 3, 4 * 3};
+        DrawTexturePro(*card.textures, (Rectangle) {94, 12, 23, 4}, rect, (Vector2) {0, 0}, 0.0, WHITE);
+        break;
+    }
+    }
 
-    /// Draw close button
-    // DrawRectangleRec(card.close_button.rect, RED);
-    // Draw close texture
-    auto close_button_position = (Vector2) {-card.close_button.rect.x, -card.close_button.rect.y};
-    DrawTextureTiled(*card.textures, (Rectangle) {32, 0, 11, 12}, (Rectangle) {0, 0, 33, 36}, close_button_position, 0.0, 3.0, WHITE);
 
-    // // Draw Toggle Button
-    // if (card.tone_button.hover) {
-    //     DrawRectangleRec(card.tone_button.rect, PURPLE);
-    // } else {
-    //     DrawRectangleRec(card.tone_button.rect, GRAY);
-    // }
-
-    // // Draw Edit Button
-    // if (card.edit_button.hover) {
-    //     DrawRectangleRec(card.edit_button.rect, PURPLE);
-    // } else {
-    //     DrawRectangleRec(card.edit_button.rect, GRAY);
-    // }
-
-    // Draw Card Edit Button
-    // float vertical_offset = (card.edit_button.rect.height - MeasureTextEx(application_font_small, "Edit", FONTSIZE_SMALL, 1.0).y) / 2.0;
-    // float horizontal_offset = (card.edit_button.rect.width - MeasureTextEx(application_font_small, "Edit", FONTSIZE_SMALL, 1.0).x) / 2.0;
-    // card.edit_button.rect.x += vertical_offset - 3;
-    // card.edit_button.rect.y += vertical_offset;
-    // DrawTextRec(application_font_small, "Edit", card.edit_button.rect, FONTSIZE_SMALL, 1.0, false, WHITE);
-    // card.edit_button.rect.x -= vertical_offset - 3;
-    // card.edit_button.rect.y -= vertical_offset;
-    // Draw Button Base
-    DrawTexturePro(*card.textures, (Rectangle) {43, 0, 7, 10}, (Rectangle) {card.edit_button.rect.x, card.edit_button.rect.y, 21, 30}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {50, 0, 1, 10}, (Rectangle) {card.edit_button.rect.x + 21, card.edit_button.rect.y, 63, 30}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {51, 0, 8, 10}, (Rectangle) {card.edit_button.rect.x + 84, card.edit_button.rect.y, 24, 30}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {77, 0, 17, 5}, (Rectangle) {card.edit_button.rect.x + 27, card.edit_button.rect.y + 6, 51, 15}, (Vector2) {0, 0}, 0.0, WHITE);
-
-    // Draw Button Text
-    DrawTexturePro(*card.textures, (Rectangle) {43, 0, 7, 10}, (Rectangle) {card.tone_button.rect.x, card.tone_button.rect.y, 21, 30}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {50, 0, 1, 10}, (Rectangle) {card.tone_button.rect.x + 21, card.tone_button.rect.y, 63, 30}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {51, 0, 8, 10}, (Rectangle) {card.tone_button.rect.x + 84, card.tone_button.rect.y, 24, 30}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {77, 5, 17, 5}, (Rectangle) {card.tone_button.rect.x + 27, card.tone_button.rect.y + 6, 51, 15}, (Vector2) {0, 0}, 0.0, WHITE);
-
-    // Draw Font increase buttons
-    // draw(card.increase_font_button, BLUE);
-    // draw(card.decrease_font_button, BROWN);
-    DrawTexturePro(*card.textures, (Rectangle) {59, 0, 9, 9}, (Rectangle) {card.increase_font_button.rect.x, card.increase_font_button.rect.y, 27, 27}, (Vector2) {0, 0}, 0.0, WHITE);
-    DrawTexturePro(*card.textures, (Rectangle) {68, 0, 9, 9}, (Rectangle) {card.decrease_font_button.rect.x, card.decrease_font_button.rect.y, 27, 27}, (Vector2) {0, 0}, 0.0, WHITE);
-
+    if (!card.hover) return; // Everything after this is only rendered when the card is hovered over by the player.
     // Reset card hover status
-    card.hover = false;
+    Defer {card.hover = false;};
+    DrawRectangleRec(card.edit_button.rect, RED);
+
+    draw_card_ui(card, camera);
 }

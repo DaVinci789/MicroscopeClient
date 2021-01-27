@@ -26,6 +26,7 @@ struct KeyBinds {
 };
 
 struct Player {
+    bool quit;
     bool mouse_held;
     Rectangle player_rect;
     Vector2 mouse_position;

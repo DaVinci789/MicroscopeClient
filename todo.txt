@@ -10,7 +10,12 @@ scenes
 card resizing
 when palette is opened, it opens 1/3 of the way, but can be resized. Whenever it reopens again, it opens back 1/3 of the way.
 
-fix project name centering
+fix project name centering (? dont know if this is still an issue)
+add customized draw text functions
+scenes? timestamp order?
+beginning token/end token
+turns of play
+resize triangle
 
 ui
 - pull cards from top left corner

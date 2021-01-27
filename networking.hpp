@@ -1,5 +1,6 @@
 #pragma once
 #include "enet.h"
+#include "player.hpp"
 
 #define ENETPORT 7777
 #define MAX_CLIENTS 8
@@ -22,5 +23,5 @@ extern bool is_client;
 
 int init_server();
 int init_client(const char *ip = "10.0.0.52");
-void client_publish();
+void client_publish(const Player& player);
 

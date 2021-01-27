@@ -79,9 +79,9 @@ int main(void) {
 
     SetWindowIcon(logo);
 
-    application_font_small  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_SMALL, NULL, 256);
-    application_font_regular = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_REGULAR, NULL, 256);
-    application_font_large  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_LARGE, NULL, 256);
+    application_font_small  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
+    application_font_regular = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
+    application_font_large  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
     Defer {UnloadFont(application_font_small);};
     Defer {UnloadFont(application_font_regular);};
     Defer {UnloadFont(application_font_large);};
@@ -97,8 +97,9 @@ int main(void) {
     #ifdef __linux__
     signal(SIGINT, signal_func);
     #endif
+    Vector2 external_data = {-1000, -1000};
 
-    while (!WindowShouldClose() && signal_handler) {
+    while (!WindowShouldClose() && signal_handler && !player.quit) {
         if (is_server) {
             event_status = enet_host_service(server, &event, 0);
             if (event_status > 0) {
@@ -108,13 +109,23 @@ int main(void) {
                            event.peer -> address.host,
                            event.peer -> address.port);
                     break;
-                case ENET_EVENT_TYPE_RECEIVE:
-                    printf("%s\n", event.packet->data);
+                case ENET_EVENT_TYPE_RECEIVE: {
+                    Vector2 vector_data = * ((Vector2*) event.packet->data);
+		    print(vector_data);
+                    external_data = vector_data;
+		    enet_packet_destroy(event.packet);
                     break;
+					      }
+		case ENET_EVENT_TYPE_DISCONNECT:
+		    printf("Player disconnected.\n");
+		    event.peer->data = NULL;
+		    break;
                 }
-            }
+            } else {
+		print(123);
+	    }
         } else if (is_client) {
-            client_publish();
+            client_publish(player);
         }
 
         // Update Game
@@ -193,6 +204,7 @@ int main(void) {
             }
             current_depth += 1;
         }
+        DrawRectangleRec((Rectangle) {external_data.x, external_data.y, 10, 10}, RED);
 
         EndMode2D();
 
@@ -234,6 +246,7 @@ int main(void) {
         player.player_rect.x = GetMousePosition().x;
         player.player_rect.y = GetMousePosition().y;
         DrawRectangleRec(player.player_rect, BLUE);
+
 
         EndDrawing();
     }

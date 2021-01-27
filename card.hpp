@@ -53,4 +53,5 @@ struct Card {
 Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD);
 Card* greatest_depth_and_furthest_along(std::vector<Card>& cards);
 void update_cards(std::vector<Card>& cards);
+void draw_card_ui(Card &card, Camera2D camera);
 void draw(Card &card, Camera2D camera);

@@ -5,6 +5,7 @@
 
 Player init_player() {
     Player player;
+    player.quit = false;
     player.mouse_held  = false;
 
     auto position = GetMousePosition();
@@ -43,6 +44,12 @@ void spawn_card(Player player, std::vector<Card>& cards, CardType type) {
     auto position = GetScreenToWorld2D(mouse_position, player.camera);
     Rectangle to_draw = {position.x, position.y, GRIDSIZE * 17, GRIDSIZE * 13};
     Card the_card = init_card("New Card", to_draw, type);
+
+    // center card on player cursor
+    the_card.body_rect.x -= the_card.body_rect.width / 2;
+    the_card.body_rect.y -= the_card.body_rect.height / 2;
+    the_card.lock_target = {the_card.body_rect.x, the_card.body_rect.y};
+
     auto next_card = greatest_depth_and_furthest_along(cards);
     if (next_card) the_card.depth = next_card->depth + 1;
     else the_card.depth = 0;
@@ -121,6 +128,10 @@ void player_write_update(Player& player) {
         }
         return;
     }
+    if (IsKeyPressed(KEY_ENTER)) {
+        if (player.editing == NAME) return;
+        player.selected_card->content += (char) '\n';
+    }
     // Typing
     if (player.selected_card) {
         auto char_pressed = GetCharPressed();
@@ -151,8 +162,8 @@ void player_resize_chosen_card(Player& player) {
     auto mouse_delta = get_mouse_delta() * (1.0 / player.camera.zoom);
     card->body_rect.width += mouse_delta.x;
     card->body_rect.height += mouse_delta.y;
-    if (card->body_rect.width < 64) card->body_rect.width = 64;
-    if (card->body_rect.height < 64) card->body_rect.height = 64;
+    if (card->body_rect.width < GRIDSIZE * 8) card->body_rect.width = GRIDSIZE * 8;
+    if (card->body_rect.height < GRIDSIZE * 8) card->body_rect.height = GRIDSIZE * 8;
 }
 
 // This is the main meat of the program.
@@ -166,6 +177,7 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
     update_button_hover(project.start_server, mouse_position);
     update_button_hover(project.start_client, mouse_position);
 
+    // We need to initialize this value to the first card because if it's null, we can't check if the player is over a card.
     Card *player_card_over = &cards[0]; // Card that the player is hovering over
     bool found_card = false;
     // Mouse and Card Selection
@@ -174,7 +186,7 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         if (CheckCollisionPointRec(position, card.body_rect)) {
             found_card = true;
             // if (player_card_over != NULL) {
-            //     if (card.depth < player_card_over->depth) continue;
+            if (card.depth < player_card_over->depth && CheckCollisionPointRec(position, player_card_over->body_rect)) continue;
             // }
             player_card_over = &card;
         }
@@ -184,9 +196,13 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         update_button_hover(card.increase_font_button, position);
         update_button_hover(card.decrease_font_button, position);
     }
-    if (!found_card) player_card_over = NULL;
+    if (!found_card) {
+        player_card_over = NULL;
+    }
 
-    if (player_card_over != NULL) player_card_over->hover = true;
+    if (player_card_over != NULL) {
+        player_card_over->hover = true;
+    }
 
     if (IsMouseButtonPressed(0) && player_card_over != NULL) {
         player.mouse_held = true;
@@ -209,8 +225,15 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.mouse_held = false;
             player.offset = {0 ,0};
         } else if (player.selected_card->tone_button.hover) {
-            if (player.selected_card->color == WHITE) player.selected_card->color = BLACK;
-            else player.selected_card->color = WHITE;
+            if (player.selected_card->color == WHITE) {
+                player.selected_card->color = BLACK;
+                // @Optimize: Cache obliteration from pointer dereference?
+                player.selected_card->tone  = DARK;
+            }
+            else {
+                player.selected_card->color = WHITE;
+                player.selected_card->tone  = LIGHT;
+            }
         } else if (player.selected_card->increase_font_button.hover) {
             FontSize *the_size = &player.selected_card->fontsize;
             switch (player.selected_card->fontsize) {
@@ -318,6 +341,14 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         spawn_card(player, cards, SCENE);
     } else if (IsKeyPressed(KEY_FOUR)) {
         spawn_card(player, cards, LEGACY);
+    }
+
+    // Quit handling
+    if (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) {
+        if (IsKeyPressed(KEY_Q)) {
+            // @Incomplete: Warn user about quitting first!
+            player.quit = true;
+        }
     }
 
     // Delete cards

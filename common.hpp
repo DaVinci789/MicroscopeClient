@@ -76,8 +76,9 @@ void print(int n);
 void print(float n);
 void print(Rectangle rect);
 
-#define FONTSIZE_SMALL 16.0
-#define FONTSIZE_REGULAR 24.0
+#define FONTSIZE_BASE 72.0
+#define FONTSIZE_SMALL 24.0
+#define FONTSIZE_REGULAR 32.0
 #define FONTSIZE_LARGE 48.0
 
 extern Font application_font_small;

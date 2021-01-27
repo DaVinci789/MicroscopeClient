@@ -1,5 +1,6 @@
 #include "networking.hpp"
 #include "common.hpp"
+#include "player.hpp"
 
 int init_server() {
     if (enet_initialize() != 0) {
@@ -40,8 +41,9 @@ int init_client(const char *ip) {
     return 0;
 }
 
-void client_publish() {
-    ENetPacket *packet = enet_packet_create((char*)"Hello, World!", 13, ENET_PACKET_FLAG_RELIABLE);
+void client_publish(const Player& player) {
+    Vector2 position = GetScreenToWorld2D(GetMousePosition(), player.camera);
+    ENetPacket *packet = enet_packet_create(&position, sizeof(position), ENET_PACKET_FLAG_UNSEQUENCED);
     enet_peer_send(peer, 0, packet);
     enet_host_flush(client);
 }
