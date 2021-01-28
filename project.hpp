@@ -3,6 +3,7 @@
 
 struct Project {
     std::string big_picture;
+    std::string last_big_picture;
     std::string last_focus_text;
     Button focus;
     Button start_server;

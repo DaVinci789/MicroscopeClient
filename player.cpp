@@ -58,7 +58,7 @@ void spawn_card(Player player, std::vector<Card>& cards, CardType type) {
 
 void player_update_camera(Player &player, bool allow_key_scroll) {
     #define ZOOM_SIZE 5
-    float zoom_levels[ZOOM_SIZE] = {0.5, 0.75, 1, 1.5, 2};
+    float zoom_levels[ZOOM_SIZE] = {0.4, 0.5, 1, 2, 3};
 
     /// Move Left/Right
     if (allow_key_scroll) {
@@ -116,6 +116,7 @@ void player_write_update(Player& player) {
         player.state = HOVERING;
         player.selected_card->grabbed = false;
         player.selected_card->selected = false;
+        player.selected_card->draw_resize = false;
         player.selected_card = NULL;
         return;
     }
@@ -185,9 +186,9 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         if (palette.open_button.hover) break; // skip checking the cards if the players is hovering over the palette open thingie
         if (CheckCollisionPointRec(position, card.body_rect)) {
             found_card = true;
-            // if (player_card_over != NULL) {
-            if (card.depth < player_card_over->depth && CheckCollisionPointRec(position, player_card_over->body_rect)) continue;
-            // }
+            if (card.depth < player_card_over->depth && CheckCollisionPointRec(position, player_card_over->body_rect)) {
+                continue;
+            }
             player_card_over = &card;
         }
         update_button_hover(card.close_button, position);
@@ -223,11 +224,11 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.state = WRITING;
             player.editing = BODY;
             player.mouse_held = false;
+            player.selected_card->draw_resize = true;
             player.offset = {0 ,0};
         } else if (player.selected_card->tone_button.hover) {
             if (player.selected_card->color == WHITE) {
                 player.selected_card->color = BLACK;
-                // @Optimize: Cache obliteration from pointer dereference?
                 player.selected_card->tone  = DARK;
             }
             else {
@@ -347,6 +348,8 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
     /// @Incomplete: make this a button
     if (IsKeyDown(KEY_F11)) {
         print(200);
+        project.last_big_picture = project.big_picture;
+        project.big_picture = "";
         player.state = BIGPICTUREWRITING;
         return;
     }
@@ -404,6 +407,10 @@ void player_write_palette_update(Player& player, Palette &palette) {
         player.state = HOVERING;
         return;
     }
+    if (IsMouseButtonPressed(0)) {
+        player.state = HOVERING;
+        return;
+    }
     std::string& last_item = player.palette_edit_type == YES ? palette.yes.back() : palette.no.back();
     if (IsKeyPressed(KEY_BACKSPACE)) {
         if (last_item.size() > 1) last_item.pop_back();
@@ -432,6 +439,7 @@ void player_write_focus_update(Player& player, Project& project) {
 
 void player_write_big_picture_update(Player &player, Project &project) {
     if (IsKeyPressed(KEY_ESCAPE)) {
+        if (project.big_picture.empty()) project.big_picture = project.last_big_picture;
         player.state = HOVERING;
         return;
     }

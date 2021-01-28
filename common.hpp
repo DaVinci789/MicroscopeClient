@@ -116,4 +116,6 @@ Button init_button(Rectangle button_rect, std::string button_text = "", Texture 
 void update_button_hover(Button& button, Vector2 position);
 void draw(Button &button, Color depressed = GRAY, Color pressed = PURPLE);
 
+void draw_texture_rect_scaled(Texture2D texture, Rectangle texture_source, Vector2 where, Vector2 stretch = {0}, int scale = 3);
+
 #endif

@@ -124,7 +124,23 @@ int main(void) {
             } else {
 		print(123);
 	    }
+            Vector2 position = GetScreenToWorld2D(GetMousePosition(), player.camera);
+            ENetPacket *packet = enet_packet_create(&position, sizeof(position), ENET_PACKET_FLAG_UNSEQUENCED);
+            enet_host_broadcast(server, 0, packet);
         } else if (is_client) {
+            event_status = enet_host_service(client, &event, 0);
+            if (event_status > 0) {
+                switch (event.type) {
+                case ENET_EVENT_TYPE_RECEIVE: {
+                    Vector2 vector_data = * ((Vector2*) event.packet->data);
+                    print(vector_data);
+                    external_data = vector_data;
+                    enet_packet_destroy(event.packet);
+                }
+                default:
+                    break;
+                }
+            }
             client_publish(player);
         }
 
@@ -188,8 +204,10 @@ int main(void) {
                 card.drawn = false;
             }
         };
-        int current_depth = 0;
+
         // Depth sorting for cards
+        // TODO use std stuff
+        int current_depth = 0;
         while (true) {
             bool every_card_undrawn = true;
             for (auto &card: cards) {
@@ -207,6 +225,7 @@ int main(void) {
             }
             current_depth += 1;
         }
+
         DrawRectangleRec((Rectangle) {external_data.x, external_data.y, 10, 10}, RED);
 
         EndMode2D();

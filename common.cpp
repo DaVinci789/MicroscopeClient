@@ -132,4 +132,6 @@ void draw(Button &button, Color depressed, Color pressed) {
     DrawRectangleRec(button.rect, button.hover ? pressed : depressed);
 }
 
-
+void draw_texture_rect_scaled(Texture2D texture, Rectangle texture_source, Vector2 where, Vector2 stretch, int scale) {
+    DrawTexturePro(spritesheet, texture_source, {where.x, where.y, texture_source.width * scale + stretch.x * scale, texture_source.height * scale + stretch.y * scale}, {0, 0}, 0.0, WHITE);
+}

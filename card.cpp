@@ -17,6 +17,7 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.grabbed  = false;
     card.selected = false;
     card.hover = false;
+    card.draw_resize = false;
     card.body_rect = body_rect;
     card.lock_target = {body_rect.x, body_rect.y};
     card.color = WHITE;
@@ -93,6 +94,10 @@ void update_cards(std::vector<Card>& cards) {
         card.decrease_font_button.rect = 
             {card.edit_button.rect.x - 10 - 56, card.body_rect.y + card.body_rect.height - 36, 27, 27};
     }
+}
+
+void draw_resize_corner(const Card& card) {
+    draw_texture_rect_scaled(spritesheet, {18, 16, 7, 7}, {card.body_rect.x + card.body_rect.width - 35, card.body_rect.y + card.body_rect.height - 35});
 }
 
 void draw_card_ui(Card &card, Camera2D camera) {
@@ -205,11 +210,12 @@ void draw(Card &card, Camera2D camera) {
     }
     }
 
+    if (card.draw_resize) draw_resize_corner(card);
 
     if (!card.hover) return; // Everything after this is only rendered when the card is hovered over by the player.
     // Reset card hover status
     Defer {card.hover = false;};
-    DrawRectangleRec(card.edit_button.rect, RED);
+    //DrawRectangleRec(card.edit_button.rect, RED);
 
     draw_card_ui(card, camera);
 }
