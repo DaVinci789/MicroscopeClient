@@ -172,12 +172,12 @@ void draw(Card &card, Camera2D camera) {
     content.push_back((char) '\0');
     card.body_rect.x += 9;
     card.body_rect.y += 30;
-    card.body_rect.width -= 9;
+    card.body_rect.width -= 21;
     card.body_rect.height -= 39;
-    DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+    draw_text_rec_justified(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
     card.body_rect.x -= 9;
     card.body_rect.y -= 30;
-    card.body_rect.width += 9;
+    card.body_rect.width += 21;
     card.body_rect.height += 39;
 
     // Draw Selection outline

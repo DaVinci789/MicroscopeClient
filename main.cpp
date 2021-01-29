@@ -199,12 +199,6 @@ int main(void) {
         DrawRectangle(1, 1, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).x + 16, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).y, WHITE);
         DrawTextEx(application_font_regular, current_project.big_picture.c_str(), {8, -1}, FONTSIZE_REGULAR, 1.0, BLACK);
 
-        Defer {
-            for (auto &card: cards) {
-                card.drawn = false;
-            }
-        };
-
         // Depth sorting for cards
         // TODO use std stuff
         int current_depth = 0;
@@ -224,6 +218,9 @@ int main(void) {
                 break;
             }
             current_depth += 1;
+        }
+        for (auto &card: cards) {
+            card.drawn = false;
         }
 
         DrawRectangleRec((Rectangle) {external_data.x, external_data.y, 10, 10}, RED);

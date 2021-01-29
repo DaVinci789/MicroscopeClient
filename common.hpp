@@ -118,4 +118,7 @@ void draw(Button &button, Color depressed = GRAY, Color pressed = PURPLE);
 
 void draw_texture_rect_scaled(Texture2D texture, Rectangle texture_source, Vector2 where, Vector2 stretch = {0}, int scale = 3);
 
+void draw_text_rec_justified(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint);
+void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint, int selectStart, int selectLength, Color selectTint, Color selectBackTint);
+
 #endif
