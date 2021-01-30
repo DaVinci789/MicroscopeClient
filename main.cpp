@@ -87,6 +87,9 @@ int main(void) {
     application_font_regular = font_base;
     application_font_large  = font_base;
     Defer {UnloadFont(font_base);}; // Idk if this leaks memory
+
+    Shader darken_shader = LoadShader(0, "assets/darken.fs");
+    Defer {UnloadShader(darken_shader);};
  
     Project current_project = init_project("New Game");
     Palette palette = init_palette();
@@ -222,7 +225,7 @@ int main(void) {
 
         // Depth sorting for cards
         // TODO use std stuff
-        int current_depth = 0;
+        int current_depth = smallest_depth(cards);
         while (true) {
             bool every_card_undrawn = true;
             for (auto &card: cards) {
@@ -231,7 +234,9 @@ int main(void) {
                 } else {
                     every_card_undrawn = false;
                     if (card.depth == current_depth) {
+                        if (card.type != player.card_focus && player.is_card_type_focus) BeginShaderMode(darken_shader);
                         draw(card, player.camera);
+                        if (card.type != player.card_focus && player.is_card_type_focus) EndShaderMode();
                     }
                 }
             }

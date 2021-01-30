@@ -34,6 +34,8 @@ struct Player {
     bool mouse_held;
     Rectangle player_rect;
     Vector2 mouse_position;
+    CardType card_focus;
+    bool is_card_type_focus;
 
     Camera2D camera;
     int camera_move_speed;

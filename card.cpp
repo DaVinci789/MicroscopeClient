@@ -28,16 +28,16 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.saved_dimensions = {0};
     card.color = WHITE;
     card.header_rec   = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
-    card.close_button = init_button({card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height});
-    card.edit_button  = init_button({card.body_rect.x + card.body_rect.width - 50, card.body_rect.y + card.body_rect.height - 30, 50, 30});
-    card.tone_button  = init_button({card.body_rect.x, card.body_rect.height - 30, 50, 30});
-    card.increase_font_button = init_button({card.body_rect.x + 10 + 50, card.body_rect.y - 30, 50, 30});
-    card.decrease_font_button = init_button({card.body_rect.x + 10 + 100, card.body_rect.y - 30, 50, 30});
-    card.scene_insert_button = init_button({0});
-    card.scene_remove_button = init_button({0});
-    card.move_up_button = init_button({0});
-    card.move_down_button = init_button({0});
-    card.remove_from_drawer_button = init_button({0});
+    card.close_button = init_button();
+    card.edit_button  = init_button();
+    card.tone_button  = init_button();
+    card.increase_font_button = init_button();
+    card.decrease_font_button = init_button();
+    card.scene_insert_button = init_button();
+    card.scene_remove_button = init_button();
+    card.move_up_button = init_button();
+    card.move_down_button = init_button();
+    card.remove_from_drawer_button = init_button();
 
     card.depth = 0;
     card.drawn = false;
@@ -57,6 +57,14 @@ Card* greatest_depth_and_furthest_along(std::vector<Card>& cards) {
         }
     }
     return current_card;
+}
+
+int smallest_depth(const std::vector<Card>& cards) {
+    int depth = 9999;
+    for (auto &card: cards) {
+        if (card.depth < depth) depth = card.depth;
+    }
+    return depth;
 }
 
 void update_cards(std::vector<Card>& cards) {

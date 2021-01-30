@@ -1,4 +1,5 @@
-beginning token/end token
+main menu
+serialization
 search function
 card overview
 
@@ -27,6 +28,9 @@ legacy: show which cards changed since focus last changed
 scene cards: compressed?
 - scene cards need a question and an answer part to them.
 undo/redo
+if you delete events, all the scenes within should pop out.
+- maybe a confirmation?
+sometimes scene cards just disappear when removing them from events?
 
 
 ui

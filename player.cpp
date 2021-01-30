@@ -12,6 +12,9 @@ Player init_player() {
     auto position = GetMousePosition();
     player.player_rect = {position.x, position.y, 10, 10};
     player.mouse_position = position;
+
+    player.card_focus = SCENE;
+    player.is_card_type_focus = false;
     player.camera_move_speed = 20;
     player.camera = {0};
     player.camera_target = {0, 0};
@@ -274,6 +277,8 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             }
         } else if (player.selected_card->scene_insert_button.hover) {
             player.state = SCENECARDSELECTING;
+            player.card_focus = SCENE;
+            player.is_card_type_focus = true;
             player.mouse_held = false;
             player.offset = {0, 0};
             return;
@@ -478,7 +483,9 @@ void player_write_big_picture_update(Player &player, Project &project) {
 void player_select_scene_card_update(Player& player, std::vector<Card>& cards) {
     if (player.selected_card == NULL) return;
     if (IsKeyPressed(KEY_ESCAPE)) {
+        player.selected_card = NULL;
         player.state = HOVERING;
+        player.is_card_type_focus = false;
         return;
     }
     auto mouse_position = GetMousePosition();
@@ -498,6 +505,7 @@ void player_select_scene_card_update(Player& player, std::vector<Card>& cards) {
         }
 
         if (!player_card_over) return;
+        Defer {player.is_card_type_focus = false;};
         if (player_card_over->type != SCENE) {
             player.selected_card = NULL;
             player.state = HOVERING;

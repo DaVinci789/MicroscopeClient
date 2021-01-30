@@ -114,7 +114,7 @@ struct Button {
     Font *font;
 };
 
-Button init_button(Rectangle button_rect, std::string button_text = "", Texture texture = {0});
+Button init_button(Rectangle button_rect = {0}, std::string button_text = "", Texture texture = {0});
 void update_button_hover(Button& button, Vector2 position);
 void draw(Button &button, Color depressed = GRAY, Color pressed = PURPLE);
 
