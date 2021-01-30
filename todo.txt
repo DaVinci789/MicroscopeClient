@@ -1,3 +1,7 @@
+beginning token/end token
+search function
+card overview
+
 palette
 palette open button over card bug
 buttons!
@@ -11,13 +15,19 @@ card resizing
 when palette is opened, it opens 1/3 of the way, but can be resized. Whenever it reopens again, it opens back 1/3 of the way.
 
 fix project name centering (? dont know if this is still an issue)
-add customized draw text functions
-scenes? timestamp order?
-beginning token/end token
 turns of play
-resize triangle
-search function
-card overview
+
+justification issue/spaces at the beginning/end of lines
+networking tabs startserver/client menu
+change init_button signature
+scissor mode?
+dangling pointers/memory leak in deleting event card with children?
+logging system
+legacy: show which cards changed since focus last changed
+scene cards: compressed?
+- scene cards need a question and an answer part to them.
+undo/redo
+
 
 ui
 - pull cards from top left corner
@@ -26,3 +36,6 @@ server design
 what gets sent to the players?
 - cards
 - player world mouse positions
+
+DONE
+scenes? timestamp order?

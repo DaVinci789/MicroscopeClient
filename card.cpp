@@ -8,6 +8,8 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.content = "";
     card.last_name = name;
     card.last_content = "";
+    card.cards_under = {};
+    card.parent = NULL;
     card.textures = &spritesheet;
     card.fontsize = REGULAR;
     card.font = &application_font_regular;
@@ -18,8 +20,12 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.selected = false;
     card.hover = false;
     card.draw_resize = false;
+    card.in_drawer = false;
+    card.is_beginning = false;
+    card.is_end = false;
     card.body_rect = body_rect;
     card.lock_target = {body_rect.x, body_rect.y};
+    card.saved_dimensions = {0};
     card.color = WHITE;
     card.header_rec   = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
     card.close_button = init_button({card.body_rect.x + card.body_rect.width - 30, card.body_rect.y - header_height, 30, header_height});
@@ -27,6 +33,11 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.tone_button  = init_button({card.body_rect.x, card.body_rect.height - 30, 50, 30});
     card.increase_font_button = init_button({card.body_rect.x + 10 + 50, card.body_rect.y - 30, 50, 30});
     card.decrease_font_button = init_button({card.body_rect.x + 10 + 100, card.body_rect.y - 30, 50, 30});
+    card.scene_insert_button = init_button({0});
+    card.scene_remove_button = init_button({0});
+    card.move_up_button = init_button({0});
+    card.move_down_button = init_button({0});
+    card.remove_from_drawer_button = init_button({0});
 
     card.depth = 0;
     card.drawn = false;
@@ -52,6 +63,14 @@ void update_cards(std::vector<Card>& cards) {
     cards.erase(std::remove_if(cards.begin(), cards.end(), [] (auto &card) {return card.deleted;}), cards.end());
     // Tween cards
     for (auto &card : cards) {
+        if (card.parent) {
+            // TODO: TWWWWWEEEN
+            card.body_rect.x = card.parent->body_rect.x;
+            card.body_rect.y = card.parent->body_rect.y;
+            card.body_rect.width = 5;
+            card.body_rect.height = 5;
+            continue;
+        }
         if (card.grabbed)
             continue;
         if (!card.selected) {
@@ -73,13 +92,12 @@ void update_cards(std::vector<Card>& cards) {
                 card.body_rect.height,
                 lock_position_to_grid(corner_coords).y - card.body_rect.y, 0.2);
         } else {
-          card.body_rect.x = card.lock_target.x;
-          card.body_rect.y = card.lock_target.y;
+            card.body_rect.x = card.lock_target.x;
+            card.body_rect.y = card.lock_target.y;
         }
     }
-
-    /// Move subparts of cards
-    for (auto &card : cards) {
+    for (auto &card: cards) {
+        /// Move subparts of cards
         card.header_rec = {card.body_rect.x,
             card.body_rect.y - card.header_rec.height,
             card.body_rect.width - 30, card.header_rec.height};
@@ -93,6 +111,8 @@ void update_cards(std::vector<Card>& cards) {
             {card.edit_button.rect.x - 10 - 27, card.body_rect.y + card.body_rect.height - 36, 27, 27};
         card.decrease_font_button.rect = 
             {card.edit_button.rect.x - 10 - 56, card.body_rect.y + card.body_rect.height - 36, 27, 27};
+        card.scene_insert_button.rect = {card.body_rect.x + card.body_rect.width - (17 * 3) / 2 - 9, card.body_rect.y + card.body_rect.height - 13 * 3 - 100, 17 * 3, 13 * 3};
+        card.scene_remove_button.rect = {card.body_rect.x + card.body_rect.width - (17 * 3) / 2 - 15, card.body_rect.y + card.body_rect.height - 13 * 3 - 50, 17 * 3, 13 * 3};
     }
 }
 
@@ -125,6 +145,11 @@ void draw_card_ui(Card &card, Camera2D camera) {
 }
 
 void draw(Card &card, Camera2D camera) {
+    if (card.parent != NULL) {
+        card.drawn = true;
+        return;
+    }
+
     Defer {card.drawn = true;};
 
     auto position = GetScreenToWorld2D(GetMousePosition(), camera);
@@ -174,7 +199,11 @@ void draw(Card &card, Camera2D camera) {
     card.body_rect.y += 30;
     card.body_rect.width -= 21;
     card.body_rect.height -= 39;
-    draw_text_rec_justified(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+    if (card.type != SCENE) {
+        draw_text_rec_justified(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+    } else {
+        DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+    }
     card.body_rect.x -= 9;
     card.body_rect.y -= 30;
     card.body_rect.width += 21;
@@ -191,11 +220,22 @@ void draw(Card &card, Camera2D camera) {
     case PERIOD: {
         Rectangle rect = {card.body_rect.x + (card.body_rect.width / 2 - 31), card.body_rect.y + 9, 21 * 3, 4 * 3};
         DrawTexturePro(*card.textures, (Rectangle) {94, 0, 21, 4}, rect, (Vector2) {0, 0}, 0.0, WHITE);
+        if (card.is_beginning) {
+            draw_texture_rect_scaled(*card.textures, {0, 48, 16, 16}, {card.body_rect.x + card.body_rect.width / 2 - ((16 * 3) / 2), card.body_rect.y + card.body_rect.height - 16 * 3 - 9});
+        } else if (card.is_end) {
+            draw_texture_rect_scaled(*card.textures, {0, 64, 16, 16}, {card.body_rect.x + card.body_rect.width / 2 - ((16 * 3) / 2), card.body_rect.y + card.body_rect.height - 16 * 3 - 9});
+        }
         break;
     }
     case EVENT: {
         Rectangle rect = {card.body_rect.x + (card.body_rect.width / 2 - 28), card.body_rect.y + 9, 19 * 3, 4 * 3};
         DrawTexturePro(*card.textures, (Rectangle) {94, 4, 19, 4}, rect, (Vector2) {0, 0}, 0.0, WHITE);
+
+        // Draw a tiny circle at the bottom if there are cards under this.
+
+        if (!card.hover && card.cards_under.size() != 0) {
+            draw_texture_rect_scaled(*card.textures, {102, 18, 6, 6}, {card.body_rect.x + card.body_rect.width / 2 - 9, card.body_rect.y + card.body_rect.height - 27});
+        }
         break;
     }
     case SCENE: {
@@ -212,10 +252,35 @@ void draw(Card &card, Camera2D camera) {
 
     if (card.draw_resize) draw_resize_corner(card);
 
+    if (card.in_drawer) {
+        draw_texture_rect_scaled(*card.textures, {33, 36, 9, 10}, to_vector(card.move_up_button.rect));
+        draw_texture_rect_scaled(*card.textures, {33, 46, 9, 10}, to_vector(card.move_down_button.rect));
+        draw_texture_rect_scaled(*card.textures, {42, 44, 9, 10}, to_vector(card.remove_from_drawer_button.rect));
+    }
+
     if (!card.hover) return; // Everything after this is only rendered when the card is hovered over by the player.
     // Reset card hover status
     Defer {card.hover = false;};
     //DrawRectangleRec(card.edit_button.rect, RED);
 
     draw_card_ui(card, camera);
+    if (card.type == EVENT) {
+        // draw(card.scene_insert_button, YELLOW);
+        // draw(card.scene_remove_button, ORANGE);
+        // Draw card peeking out if there's cards under this one
+        if (!card.cards_under.empty()) {
+            Vector2 card_back_pos = {card.body_rect.x + card.body_rect.width, card.body_rect.y + card.body_rect.height - (31 * 3) * 1.5 - 6};
+            draw_texture_rect_scaled(*card.textures, {18, 23, 14, 31}, card_back_pos);
+
+            auto text_width = MeasureTextEx(application_font_small, std::to_string(card.cards_under.size()).c_str(), 30.0, 1.0);
+            auto offset_x = ((14 * 3) - text_width.x) / 2.0;
+            auto offset_y = ((31 * 3) - text_width.y) / 2.0;
+            DrawTextEx(application_font_small, std::to_string(card.cards_under.size()).c_str(), card_back_pos + (Vector2) {offset_x, offset_y}, 30.0, 1.0, BLACK);
+        }
+
+        // Draw In Arrow
+        draw_texture_rect_scaled(*card.textures, {77, 37, 16, 13}, {card.body_rect.x + card.body_rect.width - (17 * 3) / 2 - 9, card.body_rect.y + card.body_rect.height - 13 * 3 - 100});
+        // Draw Out Arrow
+        draw_texture_rect_scaled(*card.textures, {93, 37, 16, 13}, {card.body_rect.x + card.body_rect.width - (17 * 3) / 2 - 15, card.body_rect.y + card.body_rect.height - 13 * 3 - 50});
+    }
 }

@@ -1,6 +1,7 @@
 #include "card.hpp"
 #include "common.hpp"
 #include "player.hpp"
+#include "drawer.hpp"
 #include "networking.hpp"
 
 Player init_player() {
@@ -108,7 +109,6 @@ void player_update_camera(Player &player, bool allow_key_scroll) {
 }
 
 void player_write_update(Player& player) {
-    player_update_camera(player, false);
     if (IsKeyPressed(KEY_ESCAPE)) {
         if (player.editing == NAME) {
             if (player.selected_card->name.empty()) player.selected_card->name = player.selected_card->last_name;
@@ -163,12 +163,12 @@ void player_resize_chosen_card(Player& player) {
     auto mouse_delta = get_mouse_delta() * (1.0 / player.camera.zoom);
     card->body_rect.width += mouse_delta.x;
     card->body_rect.height += mouse_delta.y;
-    if (card->body_rect.width < GRIDSIZE * 8) card->body_rect.width = GRIDSIZE * 8;
-    if (card->body_rect.height < GRIDSIZE * 8) card->body_rect.height = GRIDSIZE * 8;
+    if (card->body_rect.width < GRIDSIZE * 11) card->body_rect.width = GRIDSIZE * 11;
+    if (card->body_rect.height < GRIDSIZE * 11) card->body_rect.height = GRIDSIZE * 11;
 }
 
 // This is the main meat of the program.
-void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project) {
+void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project, Drawer& drawer) {
     auto mouse_position = GetMousePosition();
     auto position = GetScreenToWorld2D(mouse_position, player.camera);
     player.player_rect.x = position.x;
@@ -196,6 +196,10 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         update_button_hover(card.tone_button, position);
         update_button_hover(card.increase_font_button, position);
         update_button_hover(card.decrease_font_button, position);
+        if (card.type == EVENT) {
+            update_button_hover(card.scene_insert_button, position);
+            update_button_hover(card.scene_remove_button, position);
+        }
     }
     if (!found_card) {
         player_card_over = NULL;
@@ -268,6 +272,18 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
                 player.selected_card->font = &application_font_regular;
                 break;
             }
+        } else if (player.selected_card->scene_insert_button.hover) {
+            player.state = SCENECARDSELECTING;
+            player.mouse_held = false;
+            player.offset = {0, 0};
+            return;
+        } else if (player.selected_card->scene_remove_button.hover) {
+            player.state = DRAWERCARDSELECTING;
+            drawer.open = true;
+            drawer.cards = &player.selected_card->cards_under;
+            player.mouse_held = false;
+            player.offset = {0, 0};
+            return;
         }
     } else if (IsMouseButtonPressed(0)) { // Player clicks, but is not on a card
         if (palette.open_button.hover) {
@@ -342,6 +358,13 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         spawn_card(player, cards, SCENE);
     } else if (IsKeyPressed(KEY_FOUR)) {
         spawn_card(player, cards, LEGACY);
+    }
+
+    if (IsKeyPressed(KEY_F9) && player_card_over != NULL) {
+        player_card_over->is_beginning = !player_card_over->is_beginning;
+    }
+    if (IsKeyPressed(KEY_F10) && player_card_over != NULL) {
+        player_card_over->is_end = !player_card_over->is_end;
     }
 
     // Change big picture
@@ -450,4 +473,100 @@ void player_write_big_picture_update(Player &player, Project &project) {
     auto char_pressed = GetCharPressed();
     if (char_pressed != 0) project.big_picture += (char) char_pressed;
     return;
+}
+
+void player_select_scene_card_update(Player& player, std::vector<Card>& cards) {
+    if (player.selected_card == NULL) return;
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        player.state = HOVERING;
+        return;
+    }
+    auto mouse_position = GetMousePosition();
+    auto position = GetScreenToWorld2D(mouse_position, player.camera);
+
+    if (IsMouseButtonPressed(0)) {
+        Card *player_card_over = &cards[0]; // Card that the player is hovering over
+        bool found_card = NULL;
+        for (auto &card: cards) {
+            if (CheckCollisionPointRec(position, card.body_rect)) {
+                found_card = true;
+                if (card.depth < player_card_over->depth && CheckCollisionPointRec(position, player_card_over->body_rect)) {
+                    continue;
+                }
+                player_card_over = &card;
+            }
+        }
+
+        if (!player_card_over) return;
+        if (player_card_over->type != SCENE) {
+            player.selected_card = NULL;
+            player.state = HOVERING;
+            return;
+        }
+
+        player_card_over->saved_dimensions.x = player_card_over->body_rect.width;
+        player_card_over->saved_dimensions.y = player_card_over->body_rect.height;
+        player_card_over->parent = player.selected_card;
+        player.selected_card->cards_under.push_back(player_card_over);
+        player.selected_card = NULL;
+        player.state = HOVERING;
+    }
+
+}
+
+template <typename T>
+void vec_move(std::vector<T>& v, size_t old_index, size_t new_index) {
+    if (old_index > new_index) {
+        std::rotate(v.rend() - old_index - 1, v.rend() - old_index, v.rend() - new_index);
+    } else {
+        std::rotate(v.begin() + old_index, v.begin() + old_index + 1, v.begin() + new_index + 1);
+    }
+}
+
+void player_drawer_select_card_update(Player& player, Drawer& drawer) {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        player.state = HOVERING;
+        for (auto &card: *drawer.cards) {
+            card->parent = player.selected_card;
+        }
+        drawer.open = false;
+        return;
+    }
+
+    auto mouse_position = GetMousePosition();
+    auto position = GetScreenToWorld2D(mouse_position, player.camera);
+
+    Card *hovering_card = NULL;
+    for (auto &card: *drawer.cards) {
+        update_button_hover(card->move_up_button, mouse_position);
+        update_button_hover(card->move_down_button, mouse_position);
+        update_button_hover(card->remove_from_drawer_button, mouse_position);
+        if (card->move_up_button.hover || card->move_down_button.hover || card->remove_from_drawer_button.hover) {
+            hovering_card = card;
+        }
+    }
+
+    if (hovering_card == NULL) return;
+
+    if (IsMouseButtonPressed(0)) {
+        if (hovering_card->remove_from_drawer_button.hover) {
+            hovering_card->in_drawer = false;
+            hovering_card->parent = NULL;
+            hovering_card->body_rect.width = hovering_card->saved_dimensions.x;
+            hovering_card->body_rect.height = hovering_card->saved_dimensions.y;
+            hovering_card->lock_target.x = player.selected_card->body_rect.x;
+            hovering_card->lock_target.y = player.selected_card->body_rect.y;
+            hovering_card->depth = player.selected_card->depth + 3;
+            player.selected_card->cards_under.erase(std::remove(player.selected_card->cards_under.begin(), player.selected_card->cards_under.end(), hovering_card));
+            return;
+        } else if (hovering_card->move_up_button.hover) {
+            size_t index = std::find(drawer.cards->begin(), drawer.cards->end(), hovering_card) - drawer.cards->begin();
+            if (index == 0) return;
+            vec_move(*drawer.cards, index, index - 1);
+        } else if (hovering_card->move_down_button.hover) {
+            size_t index = std::find(drawer.cards->begin(), drawer.cards->end(), hovering_card) - drawer.cards->begin();
+            if (index == drawer.cards->size() - 1) return;
+            vec_move(*drawer.cards, index, index + 1);
+        }
+    }
 }

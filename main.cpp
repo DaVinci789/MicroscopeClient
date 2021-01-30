@@ -17,6 +17,8 @@
 #include "player.hpp"
 #include "card.hpp"
 #include "palette.hpp"
+#include "drawer.hpp"
+
 #include "networking.hpp"
 
 ENetAddress address;
@@ -71,6 +73,7 @@ int main(void) {
     SetExitKey(-1);
     Defer {CloseWindow();};
 
+    long spritesheet_modtime = GetFileModTime("assets/spritesheet.png");
     spritesheet = LoadTexture("assets/spritesheet.png");
     Defer {UnloadTexture(spritesheet);};
 
@@ -79,13 +82,12 @@ int main(void) {
 
     SetWindowIcon(logo);
 
-    application_font_small  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
-    application_font_regular = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
-    application_font_large  = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
-    Defer {UnloadFont(application_font_small);};
-    Defer {UnloadFont(application_font_regular);};
-    Defer {UnloadFont(application_font_large);};
-
+    Font font_base = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
+    application_font_small  = font_base;
+    application_font_regular = font_base;
+    application_font_large  = font_base;
+    Defer {UnloadFont(font_base);}; // Idk if this leaks memory
+ 
     Project current_project = init_project("New Game");
     Palette palette = init_palette();
 
@@ -93,6 +95,10 @@ int main(void) {
     auto cards = std::vector<Card>();
 
     Texture grid_texture = generate_grid();
+    Drawer drawer = init_drawer();
+
+    bool win_focus = IsWindowFocused();
+    bool last_win_focus = win_focus;
 
     #ifdef __linux__
     signal(SIGINT, signal_func);
@@ -100,6 +106,12 @@ int main(void) {
     Vector2 external_data = {-1000, -1000};
 
     while (!WindowShouldClose() && signal_handler && !player.quit) {
+        win_focus = IsWindowFocused();
+        if (win_focus != last_win_focus) {
+            SetTargetFPS(win_focus ? 60 : 10);
+        }
+        last_win_focus = win_focus;
+
         if (is_server) {
             event_status = enet_host_service(server, &event, 0);
             if (event_status > 0) {
@@ -150,7 +162,13 @@ int main(void) {
         switch (player.state) {
         case READONLY:
             break;
+        case HOVERING:
+            player_hover_update(player, cards, palette, current_project, drawer);
+            // HACK: This is here because if we enter the focus writing state, we want to keep it "purple" to signify that it's been selected.
+            update_button_hover(current_project.focus, GetMousePosition());
+            break;
         case WRITING:
+            player_update_camera(player, false);
             player_write_update(player);
             player_resize_chosen_card(player);
             break;
@@ -163,10 +181,13 @@ int main(void) {
         case PALETTEWRITING:
             player_write_palette_update(player, palette);
             break;
-        case HOVERING:
-            player_hover_update(player, cards, palette, current_project);
-            // HACK: This is here because if we enter the focus writing state, we want to keep it "purple" to signify that it's been selected.
-            update_button_hover(current_project.focus, GetMousePosition());
+        case SCENECARDSELECTING:
+            player_update_camera(player, true);
+            player_select_scene_card_update(player, cards);
+            break;
+        case DRAWERCARDSELECTING:
+            player_update_camera(player, true);
+            player_drawer_select_card_update(player, drawer);
             break;
         case GRABBING:
             player_grabbing_update(player, cards);
@@ -261,13 +282,19 @@ int main(void) {
             break;
         }
 
+        if (drawer.open) draw_drawer(drawer, player.camera);
+
         // Draw player cursor over everything.
         player.player_rect.x = GetMousePosition().x;
         player.player_rect.y = GetMousePosition().y;
         DrawRectangleRec(player.player_rect, BLUE);
 
-
         EndDrawing();
+
+        if (spritesheet_modtime != GetFileModTime("assets/spritesheet.png")) {
+            spritesheet = LoadTexture("assets/spritesheet.png");
+            spritesheet_modtime = GetFileModTime("assets/spritesheet.png");
+        }
     }
 
     return 0;

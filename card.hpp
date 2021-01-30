@@ -24,8 +24,9 @@ struct Card {
     std::string content;
     std::string last_name;
     std::string last_content;
+    std::vector<Card*> cards_under;
+    Card *parent;
     int depth;
-    bool drawn;
 
     Texture2D *textures;
     FontSize fontsize;
@@ -38,8 +39,14 @@ struct Card {
     bool hover;
     bool draw_resize;
 
+    bool drawn;
+    bool in_drawer;
+    bool is_beginning;
+    bool is_end;
+
     Rectangle body_rect;
     Vector2 lock_target;
+    Vector2 saved_dimensions;
     Color color;
 
     Rectangle header_rec;
@@ -49,7 +56,11 @@ struct Card {
     Button tone_button;
     Button increase_font_button;
     Button decrease_font_button;
-
+    Button scene_insert_button;
+    Button scene_remove_button;
+    Button move_up_button;
+    Button move_down_button;
+    Button remove_from_drawer_button;
 };
 
 Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD);

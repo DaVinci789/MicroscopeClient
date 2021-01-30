@@ -64,6 +64,11 @@ Vector2 operator*(Vector2 v, float f) {
     return (Vector2) {v.x * f, v.y * f};
 }
 
+Vector2 to_vector(Rectangle rect) {
+    return {rect.x, rect.y};
+}
+
+
 bool collide(Rectangle rect1, Rectangle rect2) {
     return CheckCollisionRecs(rect1, rect2);
 }
@@ -158,7 +163,7 @@ void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, floa
     int endLine = -1;           // Index where to stop drawing (where a line ends)
     int lastk = -1;             // Holds last value of the character position
 
-    int textToDrawWidth = -1;
+    int textToDrawWidth = 0;
 
     for (int i = 0, k = 0; i < length; i++, k++)
     {
@@ -187,10 +192,12 @@ void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, floa
         // and begin drawing on the next line before we can get outside the container.
         if (state == MEASURE_STATE)
         {
-            textToDrawWidth = -1;
+            textToDrawWidth = 0;
             // TODO: There are multiple types of spaces in UNICODE, maybe it's a good idea to add support for more
             // Ref: http://jkorpela.fi/chars/spaces.html
-            if ((codepoint == ' ') || (codepoint == '\t') || (codepoint == '\n')) endLine = i;
+            if ((codepoint == ' ') || (codepoint == '\t') || (codepoint == '\n')) {
+                endLine = i;
+            }
 
             if ((textOffsetX + glyphWidth + 1) >= rec.width)
             {
@@ -206,7 +213,9 @@ void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, floa
 
                 state = !state;
             }
-            else if (codepoint == '\n') state = !state;
+            else if (codepoint == '\n') {
+                state = !state;
+            }
 
             if (state == DRAW_STATE)
             {
@@ -226,7 +235,7 @@ void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, floa
                     int _index = GetGlyphIndex(font, _codepoint);
 
                     int _glyphWidth = 0;
-                    if (codepoint != '\n')
+                    if (_codepoint != '\n')
                     {
                         _glyphWidth = (font.chars[_index].advanceX == 0)?
                             (int)(font.recs[_index].width*scaleFactor + spacing):
