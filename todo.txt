@@ -30,6 +30,8 @@ scene cards: compressed?
 undo/redo
 if you delete events, all the scenes within should pop out.
 - maybe a confirmation?
+void draw_pixel_rect(Rectangle rec, float border_size,  Color fill, Color border);
+
 sometimes scene cards just disappear when removing them from events?
 
 

@@ -58,6 +58,7 @@ std::vector<char> to_c_str(std::string string);
 bool operator==(Color lh, Color rh);
 Vector2 operator-(Vector2 v1, Vector2 v2);
 Vector2 operator+(Vector2 v1, Vector2 v2);
+Rectangle operator+(Rectangle r1, Vector2 v2);
 Vector2 operator/(Vector2 v1, Vector2 v2);
 Vector2 operator*(Vector2 v, float f);
 
@@ -69,6 +70,9 @@ T center(T large, T small) {
 }
 
 extern Texture2D spritesheet;
+extern Shader darken_shader;
+
+void set_darkness_shader_amount(float amount = 2.0);
 
 bool collide(Rectangle rect1, Rectangle rect2);
 
@@ -116,7 +120,11 @@ struct Button {
 
 Button init_button(Rectangle button_rect = {0}, std::string button_text = "", Texture texture = {0});
 void update_button_hover(Button& button, Vector2 position);
+void update_button_hover(const std::vector<Vector2>& transform_stack, Button& button, Vector2 position);
 void draw(Button &button, Color depressed = GRAY, Color pressed = PURPLE);
+void draw(const std::vector<Vector2>& transform_stack, Button &button, Color depressed = GRAY, Color pressed = PURPLE);
+
+void draw_pixel_rect(Rectangle rec, float border_size = 3.0, Color fill = WHITE, Color border = BLACK);
 
 void draw_texture_rect_scaled(Texture2D texture, Rectangle texture_source, Vector2 where, Vector2 stretch = {0}, int scale = 3);
 

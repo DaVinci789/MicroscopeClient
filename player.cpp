@@ -3,6 +3,7 @@
 #include "player.hpp"
 #include "drawer.hpp"
 #include "networking.hpp"
+#include "main_menu.hpp"
 
 Player init_player() {
     Player player;
@@ -171,7 +172,7 @@ void player_resize_chosen_card(Player& player) {
 }
 
 // This is the main meat of the program.
-void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project, Drawer& drawer) {
+void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project, Drawer& drawer, MainMenu &main_menu) {
     auto mouse_position = GetMousePosition();
     auto position = GetScreenToWorld2D(mouse_position, player.camera);
     player.player_rect.x = position.x;
@@ -187,6 +188,7 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
     // Mouse and Card Selection
     for (auto &card: cards) {
         if (palette.open_button.hover) break; // skip checking the cards if the players is hovering over the palette open thingie
+        if (card.parent != NULL) continue;
         if (CheckCollisionPointRec(position, card.body_rect)) {
             found_card = true;
             if (card.depth < player_card_over->depth && CheckCollisionPointRec(position, player_card_over->body_rect)) {
@@ -227,6 +229,7 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.selected_card->deleted = true;
             player.mouse_held = false;
             player.offset = {0 ,0};
+            return;
         } else if (player.selected_card->edit_button.hover) {
             player.state = WRITING;
             player.editing = BODY;
@@ -234,12 +237,9 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             player.selected_card->draw_resize = true;
             player.offset = {0 ,0};
         } else if (player.selected_card->tone_button.hover) {
-            if (player.selected_card->color == WHITE) {
-                player.selected_card->color = BLACK;
+            if (player.selected_card->tone == LIGHT) {
                 player.selected_card->tone  = DARK;
-            }
-            else {
-                player.selected_card->color = WHITE;
+            } else {
                 player.selected_card->tone  = LIGHT;
             }
         } else if (player.selected_card->increase_font_button.hover) {
@@ -396,6 +396,10 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             card.deleted = card.selected;
         }
     }
+
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        main_menu.visible = true;
+    }
 }
 
 void player_grabbing_update(Player& player, std::vector<Card>& cards) {
@@ -538,6 +542,7 @@ void player_drawer_select_card_update(Player& player, Drawer& drawer) {
             card->parent = player.selected_card;
         }
         drawer.open = false;
+        drawer.cards = NULL;
         return;
     }
 

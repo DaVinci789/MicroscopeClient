@@ -55,6 +55,11 @@ Vector2 operator+(Vector2 v1, Vector2 v2) {
     return result;
 }
 
+Rectangle operator+(Rectangle r1, Vector2 v2) {
+    Rectangle result = { r1.x + v2.x, r1.y + v2.y, r1.width, r1.height };
+    return result;
+}
+
 Vector2 operator/(Vector2 v1, Vector2 v2) {
     Vector2 result = { v1.x / v2.x, v1.y / v2.y };
     return result;
@@ -133,8 +138,30 @@ void update_button_hover(Button& button, Vector2 position) {
     button.hover = CheckCollisionPointRec(position, button.rect);
 }
 
+void update_button_hover(const std::vector<Vector2>& transform_stack, Button& button, Vector2 position) {
+    Vector2 transform = {0};
+    for (const auto& vec: transform_stack) {
+        transform = transform + vec;
+    }
+    button.hover = CheckCollisionPointRec(position, {button.rect.x + transform.x, button.rect.y + transform.y, button.rect.width, button.rect.height});
+}
+
 void draw(Button &button, Color depressed, Color pressed) {
     DrawRectangleRec(button.rect, button.hover ? pressed : depressed);
+}
+
+void draw(const std::vector<Vector2>& transform_stack, Button &button, Color depressed, Color pressed) {
+    Vector2 transform = {0};
+    for (const auto& vec: transform_stack) {
+        transform = transform + vec;
+    }
+    DrawRectangleRec(button.rect + transform, button.hover ? pressed : depressed);
+    // DrawRectangleRec(transform + button.rect, button.hover ? pressed : depressed);
+}
+
+void draw_pixel_rect(Rectangle rec, float border_size,  Color fill, Color border) {
+    // TODO:
+    return;
 }
 
 void draw_texture_rect_scaled(Texture2D texture, Rectangle texture_source, Vector2 where, Vector2 stretch, int scale) {
@@ -296,4 +323,10 @@ void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, floa
         }
         textOffsetX += glyphWidth;
     }
+}
+
+void set_darkness_shader_amount(float amount) {
+    int darken_loc = GetShaderLocation(darken_shader, "darkness_mod");
+    float value = amount;
+    SetShaderValue(darken_shader, darken_loc, &value, UNIFORM_FLOAT);
 }

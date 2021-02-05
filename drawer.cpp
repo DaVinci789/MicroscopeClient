@@ -12,10 +12,6 @@ Drawer init_drawer(std::vector<Card*>* cards) {
 void update_drawer(Drawer& drawer) {}
 
 void draw_drawer(const Drawer& drawer, Camera2D camera) {
-    // std::sort(drawer.cards->begin(), drawer.cards->end(), [] (const auto& card1, const auto card2) -> bool {
-    //     return card1->drawer_index < card2->drawer_index;
-    // });
-
     DrawRectangleRec(drawer.body_rect, {249, 232, 202, 255});
     int card_index = 0;
     for (auto &card: *drawer.cards) {

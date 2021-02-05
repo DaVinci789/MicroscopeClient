@@ -1,7 +1,7 @@
 TARGET = main
 LIBS = -lraylib
 CXX = g++
-CXXFLAGS = -g
+CXXFLAGS = -ggdb -std=c++14
 
 .PHONY = default all clean
 
@@ -17,7 +17,7 @@ HEADERS = $(wildcard *.hpp)
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CXX) $(OBJECTS) -Wall $(CXXFLAGS) $(LIBS) -o $@
+	$(CXX) $(OBJECTS) tinyfiledialogs.c -Wall $(CXXFLAGS) $(LIBS) -o $@
 
 clean:
 	-rm -f *.o

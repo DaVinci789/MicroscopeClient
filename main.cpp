@@ -14,10 +14,12 @@
 #include "enet.h"
 
 #include "common.hpp"
+#include "main_menu.hpp"
 #include "player.hpp"
 #include "card.hpp"
 #include "palette.hpp"
 #include "drawer.hpp"
+#include "serialization.hpp"
 
 #include "networking.hpp"
 
@@ -40,13 +42,14 @@ Font application_font_regular;
 Font application_font_large;
 
 Texture2D spritesheet;
+Shader darken_shader;
 
 Texture generate_grid() {
     auto data = std::vector<char>();
     int gridsize = GRIDSIZE;
     for (int y = 0; y < gridsize * 2; y++) {
         for (int x = 0; x < gridsize * 2; x++) {
-            auto current_color = RAYWHITE;
+            auto current_color = WHITE;
             if ((x % gridsize == 0 || x % gridsize == gridsize - 1) && (y % gridsize == 0 || y % gridsize == gridsize - 1)) current_color = BLUE;
             data.push_back(current_color.r);
             data.push_back(current_color.g);
@@ -82,20 +85,28 @@ int main(void) {
 
     SetWindowIcon(logo);
 
+    // File loading stuff
     Font font_base = LoadFontEx("assets/monogram_extended.ttf", FONTSIZE_BASE, NULL, 256);
     application_font_small  = font_base;
     application_font_regular = font_base;
     application_font_large  = font_base;
     Defer {UnloadFont(font_base);}; // Idk if this leaks memory
 
-    Shader darken_shader = LoadShader(0, "assets/darken.fs");
+    darken_shader = LoadShader(0, "assets/darken.fs");
+    int darken_loc = GetShaderLocation(darken_shader, "darkness_mod");
+    float value = 2.0;
+    SetShaderValue(darken_shader, darken_loc, &value, UNIFORM_FLOAT);
     Defer {UnloadShader(darken_shader);};
+
+    // Component stuff
+
+    MainMenu main_menu = init_menu(true);
  
-    Project current_project = init_project("New Game");
+    Project current_project = init_project("Scratch Buffer");
     Palette palette = init_palette();
 
     Player player = init_player();
-    auto cards = std::vector<Card>();
+    auto cards = FileExists("save.json") ? load_cards() : std::vector<Card>();
 
     Texture grid_texture = generate_grid();
     Drawer drawer = init_drawer();
@@ -159,6 +170,24 @@ int main(void) {
             client_publish(player);
         }
 
+        if (main_menu.visible) {
+            update_cards(cards);
+            update_palette(palette);
+            update_project(current_project);
+            char opened_file[256] = {0};
+            bool file_changed = false;
+            bool new_game = false;
+            update_menu(main_menu, GetMousePosition(), new_game, file_changed, opened_file);
+            if (file_changed) {
+                cards.clear();
+                update_cards(cards);
+                cards = load_cards(opened_file);
+            } else if (new_game) {
+                cards.clear();
+            }
+            goto draw;
+        }
+
         // Update Game
         /// How I write update function sigs:
         /// first param is the player struct followed by everything the player can interact with while in that state.
@@ -166,7 +195,7 @@ int main(void) {
         case READONLY:
             break;
         case HOVERING:
-            player_hover_update(player, cards, palette, current_project, drawer);
+            player_hover_update(player, cards, palette, current_project, drawer, main_menu);
             // HACK: This is here because if we enter the focus writing state, we want to keep it "purple" to signify that it's been selected.
             update_button_hover(current_project.focus, GetMousePosition());
             break;
@@ -200,6 +229,7 @@ int main(void) {
         default:
             break;
         }
+
         previous_mouse_position = GetMousePosition();
 
         // Tween camera
@@ -209,18 +239,20 @@ int main(void) {
         update_cards(cards);
         update_palette(palette);
         update_project(current_project);
+        update_drawer(drawer);
 
+    draw:
         BeginDrawing();
         BeginMode2D(player.camera);
         ClearBackground(RAYWHITE);
         // Draw Background Grid
         auto src = (Rectangle) {-100000, -100000, 200000, 200000};
         auto dst = src;
-        DrawTexturePro(grid_texture, src, dst, (Vector2){0, 0}, 0, RAYWHITE);
+        DrawTexturePro(grid_texture, src, dst, (Vector2){0, 0}, 0, WHITE);
         // Draw Description Lines and Big Picture
-        DrawLineEx((Vector2) {0, -100000}, (Vector2) {0, 100000}, 3.0, WHITE);
-        DrawLineEx((Vector2) {-100000, 0}, (Vector2) {100000, 0}, 3.0, WHITE);
-        DrawRectangle(1, 1, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).x + 16, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).y, WHITE);
+        DrawLineEx((Vector2) {0, -100000}, (Vector2) {0, 100000}, 3.0, SKYBLUE);
+        DrawLineEx((Vector2) {-100000, 0}, (Vector2) {100000, 0}, 3.0, SKYBLUE);
+        DrawRectangle(1, 1, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).x + 16, MeasureTextEx(application_font_regular, current_project.big_picture.c_str(), FONTSIZE_REGULAR, 1.0).y, SKYBLUE);
         DrawTextEx(application_font_regular, current_project.big_picture.c_str(), {8, -1}, FONTSIZE_REGULAR, 1.0, BLACK);
 
         // Depth sorting for cards
@@ -268,6 +300,7 @@ int main(void) {
         draw(current_project);
         // Draw palette
         draw(palette);
+        if (main_menu.visible) draw_menu(main_menu);
 
         switch (player.state) {
         case WRITING:
@@ -301,6 +334,7 @@ int main(void) {
             spritesheet_modtime = GetFileModTime("assets/spritesheet.png");
         }
     }
+    save_cards(cards);
 
     return 0;
 }

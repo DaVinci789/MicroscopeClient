@@ -26,6 +26,7 @@ struct Card {
     std::string last_content;
     std::vector<Card*> cards_under;
     Card *parent;
+    std::string id;
     int depth;
 
     Texture2D *textures;
@@ -47,7 +48,6 @@ struct Card {
     Rectangle body_rect;
     Vector2 lock_target;
     Vector2 saved_dimensions;
-    Color color;
 
     Rectangle header_rec;
 
@@ -66,6 +66,8 @@ struct Card {
 Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD);
 Card* greatest_depth_and_furthest_along(std::vector<Card>& cards);
 void update_cards(std::vector<Card>& cards);
+void draw_card_body(float x, float y, float width, float height, bool light);
+void draw_card_body(Rectangle rect, bool light);
 void draw_card_ui(Card &card, Camera2D camera);
 void draw(Card &card, Camera2D camera);
 void draw_resize_corner(const Card& card);

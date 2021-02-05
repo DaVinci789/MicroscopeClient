@@ -1,9 +1,30 @@
 #include "card.hpp"
 #include "common.hpp"
+#include <random>
+
+std::string get_uuid() {
+    static std::random_device dev;
+    static std::mt19937 rng(dev());
+
+    std::uniform_int_distribution<int> dist(0, 15);
+
+    const char *v = "0123456789abcdef";
+    const bool dash[] = { 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0 };
+
+    std::string res;
+    for (int i = 0; i < 16; i++) {
+        if (dash[i]) res += "-";
+        res += v[dist(rng)];
+        res += v[dist(rng)];
+    }
+    return res;
+}
+
 
 Card init_card(std::string name, Rectangle body_rect, CardType type) {
     float header_height = 20.0;
     Card card;
+    card.id = get_uuid();
     card.name = name;
     card.content = "";
     card.last_name = name;
@@ -26,7 +47,6 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.body_rect = body_rect;
     card.lock_target = {body_rect.x, body_rect.y};
     card.saved_dimensions = {0};
-    card.color = WHITE;
     card.header_rec   = {card.body_rect.x, card.body_rect.y - header_height, card.body_rect.width - 30, header_height};
     card.close_button = init_button();
     card.edit_button  = init_button();
@@ -67,8 +87,12 @@ int smallest_depth(const std::vector<Card>& cards) {
     return depth;
 }
 
+bool operator==(Card c1, Card c2) {
+    return c1.id == c2.id;
+}
+
 void update_cards(std::vector<Card>& cards) {
-    cards.erase(std::remove_if(cards.begin(), cards.end(), [] (auto &card) {return card.deleted;}), cards.end());
+    cards.erase(std::remove_if(cards.begin(), cards.end(), [] (const auto &card) {return card.deleted;}), cards.end());
     // Tween cards
     for (auto &card : cards) {
         if (card.parent) {
@@ -152,6 +176,47 @@ void draw_card_ui(Card &card, Camera2D camera) {
     DrawTexturePro(*card.textures, (Rectangle) {68, 0, 9, 9}, (Rectangle) {card.decrease_font_button.rect.x, card.decrease_font_button.rect.y, 27, 27}, (Vector2) {0, 0}, 0.0, WHITE);
 }
 
+void draw_card_body(float x, float y, float width, float height, bool light) {
+    // Draw Body
+    DrawRectangleRec((Rectangle) {x + 3, y + 3, width - 3, height - 3}, light ? CARDWHITE : CARDBLACK);
+    auto top_left     = (Vector2) {-x, -y};
+    auto top_right    = (Vector2) {-x - width + 12, -y};
+    auto bottom_left  = (Vector2) {-x, -y - height + 12};
+    auto bottom_right = (Vector2) {-x - width + 12, -y -height + 12};
+    if (light) {
+        DrawTexturePro(spritesheet, (Rectangle) {0, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {12, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {0, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {12, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
+
+        // Horizontal bars
+        DrawTexturePro(spritesheet, (Rectangle) {4, 0, 8, 3}, (Rectangle) {0, 0, (width - 24), 9}, (Vector2) {-x - 12, -y}, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {4, 13, 8, 3}, (Rectangle) {0, 0, (width - 24), 9}, (Vector2) {-x - 12, -y - height + 9}, 0.0, WHITE);
+
+        // Vertical bars
+        DrawTexturePro(spritesheet, (Rectangle) {0, 4, 3, 8}, (Rectangle) {0, 0, 9, height - 20}, (Vector2) {-x, -y - 9}, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {13, 4, 3, 8}, (Rectangle) {0, 0, 9, height - 20}, (Vector2) {-x - width + 9, -y - 9}, 0.0, WHITE);
+
+    } else {
+        DrawTexturePro(spritesheet, (Rectangle) {16, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {12 + 16, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {16, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {12 + 16, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
+
+        // Horizontal bars
+        DrawTexturePro(spritesheet, (Rectangle) {4 + 16, 0, 8, 3}, (Rectangle) {0, 0, (width - 24), 9}, (Vector2) {-x - 12, -y}, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {4 + 16, 13, 8, 3}, (Rectangle) {0, 0, (width - 24), 9}, (Vector2) {-x - 12, -y - height + 9}, 0.0, WHITE);
+
+        // Vertical bars
+        DrawTexturePro(spritesheet, (Rectangle) {16, 4, 3, 8}, (Rectangle) {0, 0, 9, height - 20}, (Vector2) {-x, -y - 9}, 0.0, WHITE);
+        DrawTexturePro(spritesheet, (Rectangle) {13 + 16, 4, 3, 8}, (Rectangle) {0, 0, 9, height - 20}, (Vector2) {-x - width + 9, -y - 9}, 0.0, WHITE);
+    }
+}
+
+void draw_card_body(Rectangle rect, bool light) {
+    draw_card_body(rect.x, rect.y, rect.width, rect.height, light);
+}
+
 void draw(Card &card, Camera2D camera) {
     if (card.parent != NULL) {
         card.drawn = true;
@@ -162,41 +227,7 @@ void draw(Card &card, Camera2D camera) {
 
     auto position = GetScreenToWorld2D(GetMousePosition(), camera);
 
-    // Draw Body
-    DrawRectangleRec((Rectangle) {card.body_rect.x + 3, card.body_rect.y + 3, card.body_rect.width - 3, card.body_rect.height - 3}, card.tone == LIGHT ? CARDWHITE : CARDBLACK);
-    auto top_left     = (Vector2) {-card.body_rect.x, -card.body_rect.y};
-    auto top_right    = (Vector2) {-card.body_rect.x - card.body_rect.width + 12, -card.body_rect.y};
-    auto bottom_left  = (Vector2) {-card.body_rect.x, -card.body_rect.y - card.body_rect.height + 12};
-    auto bottom_right = (Vector2) {-card.body_rect.x - card.body_rect.width + 12, -card.body_rect.y -card.body_rect.height + 12};
-    if (card.tone == LIGHT) {
-        DrawTexturePro(*card.textures, (Rectangle) {0, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {12, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {0, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {12, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
-
-        // Horizontal bars
-        DrawTexturePro(*card.textures, (Rectangle) {4, 0, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y}, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {4, 13, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y - card.body_rect.height + 9}, 0.0, WHITE);
-
-        // Vertical bars
-        DrawTexturePro(*card.textures, (Rectangle) {0, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x, -card.body_rect.y - 9}, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {13, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x - card.body_rect.width + 9, -card.body_rect.y - 9}, 0.0, WHITE);
-
-    } else {
-        DrawTexturePro(*card.textures, (Rectangle) {16, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_left, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {12 + 16, 0, 4, 4}, (Rectangle) {0, 0, 12, 12}, top_right, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {16, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_left, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {12 + 16, 12, 4, 4}, (Rectangle) {0, 0, 12, 12}, bottom_right, 0.0, WHITE);
-
-        // Horizontal bars
-        DrawTexturePro(*card.textures, (Rectangle) {4 + 16, 0, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y}, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {4 + 16, 13, 8, 3}, (Rectangle) {0, 0, (card.body_rect.width - 24), 9}, (Vector2) {-card.body_rect.x - 12, -card.body_rect.y - card.body_rect.height + 9}, 0.0, WHITE);
-
-        // Vertical bars
-        DrawTexturePro(*card.textures, (Rectangle) {16, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x, -card.body_rect.y - 9}, 0.0, WHITE);
-        DrawTexturePro(*card.textures, (Rectangle) {13 + 16, 4, 3, 8}, (Rectangle) {0, 0, 9, card.body_rect.height - 20}, (Vector2) {-card.body_rect.x - card.body_rect.width + 9, -card.body_rect.y - 9}, 0.0, WHITE);
-    }
-
+    draw_card_body(card.body_rect.x, card.body_rect.y, card.body_rect.width, card.body_rect.height, card.tone == LIGHT);
     // Draw Card Content
     auto content = std::vector<char>();
     for (auto &c: card.content) {
@@ -208,9 +239,9 @@ void draw(Card &card, Camera2D camera) {
     card.body_rect.width -= 21;
     card.body_rect.height -= 39;
     if (card.type != SCENE) {
-        draw_text_rec_justified(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+        draw_text_rec_justified(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.tone == LIGHT ? BLACK : WHITE);
     } else {
-        DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.color == BLACK ? WHITE : BLACK);
+        DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.tone == LIGHT ? BLACK : WHITE);
     }
     card.body_rect.x -= 9;
     card.body_rect.y -= 30;
