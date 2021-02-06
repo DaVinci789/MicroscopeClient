@@ -9,5 +9,5 @@ enum FileCheck {
     CARDCONTENT,
 };
 
-std::vector<Card> load_cards(const char *filename = "save.json");
+void load_cards(std::vector<Card>& cards, const char *filename = "save.json");
 void save_cards(const std::vector<Card>& cards, const char *savefile = "save.json");

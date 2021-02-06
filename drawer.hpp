@@ -5,9 +5,9 @@
 struct Drawer {
     bool open;
     Rectangle body_rect;
-    std::vector<Card*>* cards;
+    std::vector<Card>* cards;
 };
 
-Drawer init_drawer(std::vector<Card*>* cards = NULL);
+Drawer init_drawer(std::vector<Card>* cards = NULL);
 void update_drawer(Drawer& drawer);
 void draw_drawer(const Drawer& drawer, Camera2D camera);

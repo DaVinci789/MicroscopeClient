@@ -17,6 +17,7 @@
 #include "main_menu.hpp"
 #include "player.hpp"
 #include "card.hpp"
+#include "card_pool.hpp"
 #include "palette.hpp"
 #include "drawer.hpp"
 #include "serialization.hpp"
@@ -106,7 +107,10 @@ int main(void) {
     Palette palette = init_palette();
 
     Player player = init_player();
-    auto cards = FileExists("save.json") ? load_cards() : std::vector<Card>();
+    auto cards = std::vector<Card>();//FileExists("save.json") ? load_cards() : std::vector<Card>();
+    if (FileExists("save.json")) {
+        load_cards(cards);
+    }
 
     Texture grid_texture = generate_grid();
     Drawer drawer = init_drawer();
@@ -181,7 +185,7 @@ int main(void) {
             if (file_changed) {
                 cards.clear();
                 update_cards(cards);
-                cards = load_cards(opened_file);
+                load_cards(cards, opened_file);
             } else if (new_game) {
                 cards.clear();
             }
@@ -219,7 +223,7 @@ int main(void) {
             break;
         case DRAWERCARDSELECTING:
             player_update_camera(player, true);
-            player_drawer_select_card_update(player, drawer);
+            player_drawer_select_card_update(player, drawer, cards);
             break;
         case GRABBING:
             player_grabbing_update(player, cards);
@@ -326,7 +330,7 @@ int main(void) {
         player.player_rect.x = GetMousePosition().x;
         player.player_rect.y = GetMousePosition().y;
         DrawRectangleRec(player.player_rect, BLUE);
-
+        DrawFPS(0, 0);
         EndDrawing();
 
         if (spritesheet_modtime != GetFileModTime("assets/spritesheet.png")) {

@@ -24,7 +24,7 @@ struct Card {
     std::string content;
     std::string last_name;
     std::string last_content;
-    std::vector<Card*> cards_under;
+    std::vector<Card> cards_under;
     Card *parent;
     std::string id;
     int depth;
@@ -63,6 +63,7 @@ struct Card {
     Button remove_from_drawer_button;
 };
 
+bool operator==(Card c1, Card c2);
 Card init_card(std::string name, Rectangle body_rect, CardType type = PERIOD);
 Card* greatest_depth_and_furthest_along(std::vector<Card>& cards);
 void update_cards(std::vector<Card>& cards);

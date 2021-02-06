@@ -20,7 +20,7 @@ Player init_player() {
     player.camera = {0};
     player.camera_target = {0, 0};
     player.camera.target = player.camera_target;
-    player.zoom_level = 2;
+    player.zoom_level = 3;
     player.camera_zoom_target = 1.0f;
     player.camera.offset = (Vector2){ 800/2, 600/2 };
     player.camera.rotation = 0.0f;
@@ -63,7 +63,7 @@ void spawn_card(Player player, std::vector<Card>& cards, CardType type) {
 
 void player_update_camera(Player &player, bool allow_key_scroll) {
     #define ZOOM_SIZE 5
-    float zoom_levels[ZOOM_SIZE] = {0.4, 0.5, 1, 2, 3};
+    float zoom_levels[ZOOM_SIZE] = {0.3, 0.5, 0.7, 1, 1.5};
 
     /// Move Left/Right
     if (allow_key_scroll) {
@@ -519,7 +519,8 @@ void player_select_scene_card_update(Player& player, std::vector<Card>& cards) {
         player_card_over->saved_dimensions.x = player_card_over->body_rect.width;
         player_card_over->saved_dimensions.y = player_card_over->body_rect.height;
         player_card_over->parent = player.selected_card;
-        player.selected_card->cards_under.push_back(player_card_over);
+        player.selected_card->cards_under.push_back(*player_card_over);
+        player_card_over->deleted = true;
         player.selected_card = NULL;
         player.state = HOVERING;
     }
@@ -535,12 +536,10 @@ void vec_move(std::vector<T>& v, size_t old_index, size_t new_index) {
     }
 }
 
-void player_drawer_select_card_update(Player& player, Drawer& drawer) {
+void player_drawer_select_card_update(Player& player, Drawer& drawer, std::vector<Card>& cards) {
     if (IsKeyPressed(KEY_ESCAPE)) {
+        player.selected_card = NULL;
         player.state = HOVERING;
-        for (auto &card: *drawer.cards) {
-            card->parent = player.selected_card;
-        }
         drawer.open = false;
         drawer.cards = NULL;
         return;
@@ -551,33 +550,34 @@ void player_drawer_select_card_update(Player& player, Drawer& drawer) {
 
     Card *hovering_card = NULL;
     for (auto &card: *drawer.cards) {
-        update_button_hover(card->move_up_button, mouse_position);
-        update_button_hover(card->move_down_button, mouse_position);
-        update_button_hover(card->remove_from_drawer_button, mouse_position);
-        if (card->move_up_button.hover || card->move_down_button.hover || card->remove_from_drawer_button.hover) {
-            hovering_card = card;
+        update_button_hover(card.move_up_button, mouse_position);
+        update_button_hover(card.move_down_button, mouse_position);
+        update_button_hover(card.remove_from_drawer_button, mouse_position);
+        if (card.move_up_button.hover || card.move_down_button.hover || card.remove_from_drawer_button.hover) {
+            hovering_card = &card;
         }
     }
-
     if (hovering_card == NULL) return;
 
     if (IsMouseButtonPressed(0)) {
         if (hovering_card->remove_from_drawer_button.hover) {
             hovering_card->in_drawer = false;
             hovering_card->parent = NULL;
-            hovering_card->body_rect.width = hovering_card->saved_dimensions.x;
-            hovering_card->body_rect.height = hovering_card->saved_dimensions.y;
+            hovering_card->body_rect.width = hovering_card->saved_dimensions.x + GRIDSIZE / 2;
+            hovering_card->body_rect.height = hovering_card->saved_dimensions.y + GRIDSIZE / 2;
             hovering_card->lock_target.x = player.selected_card->body_rect.x;
             hovering_card->lock_target.y = player.selected_card->body_rect.y;
             hovering_card->depth = player.selected_card->depth + 3;
-            player.selected_card->cards_under.erase(std::remove(player.selected_card->cards_under.begin(), player.selected_card->cards_under.end(), hovering_card));
+            Card new_card = (*hovering_card);
+            player.selected_card->cards_under.erase(std::remove(player.selected_card->cards_under.begin(), player.selected_card->cards_under.end(), *hovering_card), player.selected_card->cards_under.end());
+            cards.push_back(new_card);
             return;
         } else if (hovering_card->move_up_button.hover) {
-            size_t index = std::find(drawer.cards->begin(), drawer.cards->end(), hovering_card) - drawer.cards->begin();
+            size_t index = std::find(drawer.cards->begin(), drawer.cards->end(), *hovering_card) - drawer.cards->begin();
             if (index == 0) return;
             vec_move(*drawer.cards, index, index - 1);
         } else if (hovering_card->move_down_button.hover) {
-            size_t index = std::find(drawer.cards->begin(), drawer.cards->end(), hovering_card) - drawer.cards->begin();
+            size_t index = std::find(drawer.cards->begin(), drawer.cards->end(), *hovering_card) - drawer.cards->begin();
             if (index == drawer.cards->size() - 1) return;
             vec_move(*drawer.cards, index, index + 1);
         }

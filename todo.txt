@@ -1,5 +1,8 @@
 main menu
 serialization
+
+horizontal, vertical, stacking commands
+
 search function
 card overview
 
@@ -31,6 +34,7 @@ undo/redo
 if you delete events, all the scenes within should pop out.
 - maybe a confirmation?
 void draw_pixel_rect(Rectangle rec, float border_size,  Color fill, Color border);
+eventually fix cards under bug
 
 sometimes scene cards just disappear when removing them from events?
 

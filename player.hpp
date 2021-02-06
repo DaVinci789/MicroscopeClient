@@ -68,4 +68,4 @@ void player_write_big_picture_update(Player &player, Project &project);
 void player_write_palette_update(Player& player, Palette &palette);
 void player_write_focus_update(Player& player, Project& project);
 void player_select_scene_card_update(Player& player, std::vector<Card>& cards);
-void player_drawer_select_card_update(Player& player, Drawer& drawer);
+void player_drawer_select_card_update(Player& player, Drawer& drawer, std::vector<Card>& cards);

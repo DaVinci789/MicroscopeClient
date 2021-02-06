@@ -29,7 +29,7 @@ Card init_card(std::string name, Rectangle body_rect, CardType type) {
     card.content = "";
     card.last_name = name;
     card.last_content = "";
-    card.cards_under = {};
+    card.cards_under = std::vector<Card>();
     card.parent = NULL;
     card.textures = &spritesheet;
     card.fontsize = REGULAR;
