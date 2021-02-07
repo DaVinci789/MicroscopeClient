@@ -24,4 +24,5 @@ extern bool is_client;
 int init_server();
 int init_client(const char *ip = "10.0.0.52");
 void client_publish(const Player& player);
+void update_networking(Player& player);
 

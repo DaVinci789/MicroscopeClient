@@ -19,10 +19,11 @@
 #include "card.hpp"
 #include "card_pool.hpp"
 #include "palette.hpp"
+#include "search_box.hpp"
 #include "drawer.hpp"
 #include "serialization.hpp"
 
-#include "networking.hpp"
+// #include "networking.hpp"
 
 ENetAddress address;
 ENetHost *server = NULL;
@@ -32,6 +33,8 @@ int event_status;
 ENetHost *client = NULL;
 ENetPeer *peer = NULL;
 int enet_event_status;
+
+Vector2 external_data = {-1000, -1000};
 
 bool is_server = false;
 bool is_client = false;
@@ -68,7 +71,7 @@ void signal_func(int dummy) {
 }
 
 int main(void) {
-    Defer {if (is_server || is_client) enet_deinitialize();};
+    // Defer {if (is_server || is_client) enet_deinitialize();};
     SetTraceLogLevel(LOG_INFO);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
@@ -105,9 +108,10 @@ int main(void) {
  
     Project current_project = init_project("Scratch Buffer");
     Palette palette = init_palette();
+    SearchBox search_box = init_search_box();
 
     Player player = init_player();
-    auto cards = std::vector<Card>();//FileExists("save.json") ? load_cards() : std::vector<Card>();
+    auto cards = std::vector<Card>();
     if (FileExists("save.json")) {
         load_cards(cards);
     }
@@ -121,7 +125,6 @@ int main(void) {
     #ifdef __linux__
     signal(SIGINT, signal_func);
     #endif
-    Vector2 external_data = {-1000, -1000};
 
     while (!WindowShouldClose() && signal_handler && !player.quit) {
         win_focus = IsWindowFocused();
@@ -130,49 +133,7 @@ int main(void) {
         }
         last_win_focus = win_focus;
 
-        if (is_server) {
-            event_status = enet_host_service(server, &event, 0);
-            if (event_status > 0) {
-                switch (event.type) {
-                case ENET_EVENT_TYPE_CONNECT:
-                    printf("A new client connected from %x:%u.\n",
-                           event.peer -> address.host,
-                           event.peer -> address.port);
-                    break;
-                case ENET_EVENT_TYPE_RECEIVE: {
-                    Vector2 vector_data = * ((Vector2*) event.packet->data);
-		    print(vector_data);
-                    external_data = vector_data;
-		    enet_packet_destroy(event.packet);
-                    break;
-					      }
-		case ENET_EVENT_TYPE_DISCONNECT:
-		    printf("Player disconnected.\n");
-		    event.peer->data = NULL;
-		    break;
-                }
-            } else {
-		print(123);
-	    }
-            Vector2 position = GetScreenToWorld2D(GetMousePosition(), player.camera);
-            ENetPacket *packet = enet_packet_create(&position, sizeof(position), ENET_PACKET_FLAG_UNSEQUENCED);
-            enet_host_broadcast(server, 0, packet);
-        } else if (is_client) {
-            event_status = enet_host_service(client, &event, 0);
-            if (event_status > 0) {
-                switch (event.type) {
-                case ENET_EVENT_TYPE_RECEIVE: {
-                    Vector2 vector_data = * ((Vector2*) event.packet->data);
-                    print(vector_data);
-                    external_data = vector_data;
-                    enet_packet_destroy(event.packet);
-                }
-                default:
-                    break;
-                }
-            }
-            client_publish(player);
-        }
+        //update_networking(player);
 
         if (main_menu.visible) {
             update_cards(cards);
@@ -199,7 +160,7 @@ int main(void) {
         case READONLY:
             break;
         case HOVERING:
-            player_hover_update(player, cards, palette, current_project, drawer, main_menu);
+            player_hover_update(player, cards, palette, current_project, drawer, main_menu, search_box);
             // HACK: This is here because if we enter the focus writing state, we want to keep it "purple" to signify that it's been selected.
             update_button_hover(current_project.focus, GetMousePosition());
             break;
@@ -207,6 +168,10 @@ int main(void) {
             player_update_camera(player, false);
             player_write_update(player);
             player_resize_chosen_card(player);
+            break;
+        case SEARCHING:
+            player_search_update(player, search_box);
+            update_search_box(search_box, cards);
             break;
         case BIGPICTUREWRITING:
             player_write_big_picture_update(player, current_project);
@@ -285,7 +250,7 @@ int main(void) {
             card.drawn = false;
         }
 
-        DrawRectangleRec((Rectangle) {external_data.x, external_data.y, 10, 10}, RED);
+        //DrawRectangleRec((Rectangle) {external_data.x, external_data.y, 10, 10}, RED);
 
         EndMode2D();
 
@@ -304,7 +269,9 @@ int main(void) {
         draw(current_project);
         // Draw palette
         draw(palette);
+        if (search_box.visible) draw_search_box(search_box);
         if (main_menu.visible) draw_menu(main_menu);
+        if (drawer.open) draw_drawer(drawer, player.camera);
 
         switch (player.state) {
         case WRITING:
@@ -322,15 +289,15 @@ int main(void) {
         case PALETTEWRITING:
             DrawText("Palettewriting", 0, GetScreenHeight() - 16, 16, BLACK);
             break;
+        case SEARCHING:
+            DrawText("Searching", 0, GetScreenHeight() - 16, 16, BLACK);
+            break;
         }
-
-        if (drawer.open) draw_drawer(drawer, player.camera);
 
         // Draw player cursor over everything.
         player.player_rect.x = GetMousePosition().x;
         player.player_rect.y = GetMousePosition().y;
         DrawRectangleRec(player.player_rect, BLUE);
-        DrawFPS(0, 0);
         EndDrawing();
 
         if (spritesheet_modtime != GetFileModTime("assets/spritesheet.png")) {

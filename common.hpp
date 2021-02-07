@@ -131,4 +131,5 @@ void draw_texture_rect_scaled(Texture2D texture, Rectangle texture_source, Vecto
 void draw_text_rec_justified(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint);
 void draw_text_rec_ex_justified(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint, int selectStart, int selectLength, Color selectTint, Color selectBackTint);
 
+void draw_text_bubble(bool on, std::string text, Vector2 where);
 #endif

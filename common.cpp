@@ -330,3 +330,22 @@ void set_darkness_shader_amount(float amount) {
     float value = amount;
     SetShaderValue(darken_shader, darken_loc, &value, UNIFORM_FLOAT);
 }
+
+void draw_text_bubble(bool on, std::string text, Vector2 where) {
+    #define MIN_WIDTH 30 * 8
+    Rectangle rect_part_1 = {43, 30, 3, 14};
+    Rectangle rect_part_2 = {45, 30, 1, 14};
+    Rectangle rect_part_3 = {46, 30, 3, 14};
+    if (on) {
+        rect_part_1 = {49, 30, 3, 14};
+        rect_part_2 = {51, 30, 1, 14};
+        rect_part_3 = {52, 30, 3, 14};
+    }
+    auto text_width = MeasureTextEx(application_font_regular, text.c_str(), FONTSIZE_REGULAR, 1.0).x;
+    if (text_width < MIN_WIDTH) text_width = MIN_WIDTH;
+
+    draw_texture_rect_scaled(spritesheet, rect_part_1, where);
+    draw_texture_rect_scaled(spritesheet, rect_part_2, {where.x + 9, where.y}, {text_width / 3 - 2, 0});
+    draw_texture_rect_scaled(spritesheet, rect_part_3, {where.x + text_width + 6, where.y});
+    DrawTextEx(application_font_regular, text.c_str(), {floor(where.x), floor(where.y + 1)}, FONTSIZE_REGULAR, 1.0, on ? BLACK : WHITE);
+}

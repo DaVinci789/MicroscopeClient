@@ -31,6 +31,20 @@ void load_cards(std::vector<Card>& cards, const char *filename) {
         current_card.body_rect.width = card.at("w");
         current_card.body_rect.height = card.at("h");
         current_card.content = card.at("content");
+        if (card.count("fontsize") > 0) {
+            current_card.fontsize = card.at("fontsize");
+            switch (current_card.fontsize) {
+            case SMALL: 
+                current_card.font = &application_font_small;
+                break;
+            case REGULAR: 
+                current_card.font = &application_font_regular;
+                break;
+            case LARGE: 
+                current_card.font = &application_font_large;
+                break;
+            }
+        }
         if (card.count("cards_under") > 0) {
             for (auto &under_card_json: card.at("cards_under")) {
                 auto under_card = init_card("", {0, 0, GRIDSIZE * 17, GRIDSIZE * 13});
@@ -39,11 +53,29 @@ void load_cards(std::vector<Card>& cards, const char *filename) {
                 under_card.type = under_card_json.at("type");
                 under_card.tone = under_card_json.at("tone");
                 under_card.content = under_card_json.at("content");
+                if (under_card_json.count("fontsize") > 0) {
+                    under_card.fontsize = under_card_json.at("fontsize");
+                    switch (under_card.fontsize) {
+                    case SMALL: 
+                        under_card.font = &application_font_small;
+                        break;
+                    case REGULAR: 
+                        under_card.font = &application_font_regular;
+                        break;
+                    case LARGE: 
+                        under_card.font = &application_font_large;
+                        break;
+                    }
+                }
                 under_card.saved_dimensions.x = under_card_json.at("saved_dimensions_x");
                 under_card.saved_dimensions.y = under_card_json.at("saved_dimensions_y");
                 current_card.cards_under.push_back(std::move(under_card));
             }
         }
+        if (card.count("is_beginning") > 0)
+            current_card.is_beginning = true;
+        if (card.count("is_end") > 0)
+            current_card.is_end = true;
         cards.emplace_back(current_card);
     }
 }
@@ -63,6 +95,7 @@ void save_cards(const std::vector<Card>& cards, const char *savefile) {
             {"w", card.body_rect.width},
             {"h", card.body_rect.height},
             {"content", card.content},
+            {"fontsize", card.fontsize},
         };
         if (!card.cards_under.empty()) {
             save_file["cards"][std::to_string(id)]["cards_under"] = {};
@@ -73,12 +106,18 @@ void save_cards(const std::vector<Card>& cards, const char *savefile) {
                         {"type", under_card.type},
                         {"tone", under_card.tone},
                         {"content", under_card.content},
+                        {"fontsize", under_card.fontsize},
                         {"saved_dimensions_x", under_card.saved_dimensions.x},
                         {"saved_dimensions_y", under_card.saved_dimensions.y},
                     }
                     );
             }
         }
+        if (card.is_beginning)
+            save_file["cards"][std::to_string(id)]["is_beginning"] = true;
+        if (card.is_end)
+            save_file["cards"][std::to_string(id)]["is_end"] = true;
+            
         id += 1;
     }
     file << save_file << std::endl;

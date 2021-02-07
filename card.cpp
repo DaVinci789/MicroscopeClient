@@ -241,7 +241,7 @@ void draw(Card &card, Camera2D camera) {
     if (card.type != SCENE) {
         draw_text_rec_justified(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.tone == LIGHT ? BLACK : WHITE);
     } else {
-        DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.25, true, card.tone == LIGHT ? BLACK : WHITE);
+        DrawTextRec(*card.font, content.data(), card.body_rect, get_font_size(card.font), 0.15, true, card.tone == LIGHT ? BLACK : WHITE);
     }
     card.body_rect.x -= 9;
     card.body_rect.y -= 30;

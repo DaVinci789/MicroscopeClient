@@ -4,6 +4,7 @@
 #include "drawer.hpp"
 #include "networking.hpp"
 #include "main_menu.hpp"
+#include "search_box.hpp"
 
 Player init_player() {
     Player player;
@@ -172,15 +173,15 @@ void player_resize_chosen_card(Player& player) {
 }
 
 // This is the main meat of the program.
-void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project, Drawer& drawer, MainMenu &main_menu) {
+void player_hover_update(Player& player, std::vector<Card>& cards, Palette& palette, Project &project, Drawer& drawer, MainMenu &main_menu, SearchBox& search_box) {
     auto mouse_position = GetMousePosition();
     auto position = GetScreenToWorld2D(mouse_position, player.camera);
     player.player_rect.x = position.x;
     player.player_rect.y = position.y;
 
     palette.open_button.hover = collide((Rectangle) {mouse_position.x, mouse_position.y, 10, 10}, palette.open_button.rect);
-    update_button_hover(project.start_server, mouse_position);
-    update_button_hover(project.start_client, mouse_position);
+    // update_button_hover(project.start_server, mouse_position);
+    // update_button_hover(project.start_client, mouse_position);
 
     // We need to initialize this value to the first card because if it's null, we can't check if the player is over a card.
     Card *player_card_over = &cards[0]; // Card that the player is hovering over
@@ -246,7 +247,6 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             FontSize *the_size = &player.selected_card->fontsize;
             switch (player.selected_card->fontsize) {
             case SMALL: 
-                print(200);
                 *the_size = REGULAR;
                 player.selected_card->font = &application_font_regular;
                 break;
@@ -309,15 +309,17 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
             project.last_focus_text = project.focus.text;
             project.focus.text = "";
             return;
-        } else if (project.start_server.hover) {
-            print(200);
-            init_server();
-            return;
-        } else if (project.start_client.hover) {
-            print(201);
-            init_client();
-            return;
-        } else {
+        }
+        // else if (project.start_server.hover) {
+        //     print(200);
+        //     init_server();
+        //     return;
+        // } else if (project.start_client.hover) {
+        //     print(201);
+        //     init_client();
+        //     return;
+        // }
+        else {
             player.state = GRABBING; // Background drag
             player.hold_origin = GetMousePosition();
             return;
@@ -382,11 +384,15 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
         return;
     }
 
-    // Quit handling
+    // Control Key Handling
     if (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) {
         if (IsKeyPressed(KEY_Q)) {
             // @Incomplete: Warn user about quitting first!
             player.quit = true;
+        } else if (IsKeyPressed(KEY_F)) {
+            search_box.visible = true;
+            player.state = SEARCHING;
+            return;
         }
     }
 
@@ -399,6 +405,62 @@ void player_hover_update(Player& player, std::vector<Card>& cards, Palette& pale
 
     if (IsKeyPressed(KEY_ESCAPE)) {
         main_menu.visible = true;
+    }
+
+    if (IsKeyPressed(KEY_H)) {
+        print(200);
+        std::vector<Card> x_cards;
+        std::copy_if(cards.begin(), cards.end(), std::back_inserter(x_cards), [](auto& card){return card.selected;});
+        std::sort(x_cards.begin(), x_cards.end(), [](auto& card1, auto& card2) {
+            return card1.body_rect.x < card2.body_rect.x;
+        });
+        float move = 0;
+        for (auto &card: x_cards) {
+            card.lock_target = {position.x + move, position.y};
+            move += card.body_rect.width;
+        }
+        // This is so slow! We need to just use references or pointers or whatever instead.
+        for (auto &card: cards) {
+            for (auto &mod_card: x_cards) {
+                if (card == mod_card) {
+                    card = mod_card;
+                }
+            }
+        }
+    } else if (IsKeyPressed(KEY_V)) {
+        std::vector<Card> y_cards;
+        std::copy_if(cards.begin(), cards.end(), std::back_inserter(y_cards), [](auto& card){return card.selected;});
+        std::sort(y_cards.begin(), y_cards.end(), [](auto& card1, auto& card2) {
+            return card1.body_rect.y < card2.body_rect.y;
+        });
+        float move = 0;
+        for (auto &card: y_cards) {
+            card.lock_target = {position.x, position.y + move};
+            move += card.body_rect.height;
+        }
+        for (auto &card: cards) {
+            for (auto &mod_card: y_cards) {
+                if (card == mod_card) {
+                    card = mod_card;
+                }
+            }
+        }
+    } else if (IsKeyPressed(KEY_C)) {
+        std::vector<Card> selected_cards;
+        std::copy_if(cards.begin(), cards.end(), std::back_inserter(selected_cards), [](auto& card){return card.selected;});
+        std::sort(selected_cards.begin(), selected_cards.end(), [](auto& card1, auto& card2) {
+            return card1.depth < card2.depth;
+        });
+        for (auto &card: selected_cards) {
+            card.lock_target = {position.x, position.y};
+        }
+        for (auto &card: cards) {
+            for (auto &mod_card: selected_cards) {
+                if (card == mod_card) {
+                    card = mod_card;
+                }
+            }
+        }
     }
 }
 
@@ -582,4 +644,19 @@ void player_drawer_select_card_update(Player& player, Drawer& drawer, std::vecto
             vec_move(*drawer.cards, index, index + 1);
         }
     }
+}
+
+void player_search_update(Player& player, SearchBox& box) {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        player.state = HOVERING;
+        box.search.clear();
+        box.visible = false;
+        return;
+    }
+    
+    if (IsKeyPressed(KEY_BACKSPACE)) {
+        if (!box.search.empty()) box.search.pop_back();
+    }
+    auto char_pressed = GetCharPressed();
+    if (char_pressed != 0) box.search += (char) char_pressed;
 }

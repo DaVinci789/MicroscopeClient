@@ -54,7 +54,7 @@ void draw_palette_text(bool on, std::string text, Vector2 where) {
     }
     auto text_width = MeasureTextEx(application_font_regular, text.c_str(), FONTSIZE_REGULAR, 1.0).x;
     draw_texture_rect_scaled(spritesheet, rect_part_1, where);
-    draw_texture_rect_scaled(spritesheet, rect_part_2, {where.x + 9, where.y}, {text_width / 3, 0});
+    draw_texture_rect_scaled(spritesheet, rect_part_2, {where.x + 9, where.y}, {text_width / 3 - 2, 0});
     draw_texture_rect_scaled(spritesheet, rect_part_3, {where.x + text_width + 6, where.y});
     DrawTextEx(application_font_regular, text.c_str(), {floor(where.x), floor(where.y + 1)}, FONTSIZE_REGULAR, 1.0, on ? BLACK : WHITE);
 }
